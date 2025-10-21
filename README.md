@@ -1,6 +1,6 @@
 
 <div align="center">
-  <img src="./public/logo_banner.png" alt="KhojDu Logo" width="300" height="100" />
+  <img src="frontend/public/logo_banner.png" alt="KhojDu Logo" width="300" height="100" />
   
 <span align="center" style="color: orange; font-size: 18px; font-weight: normal; font-family: 'Nothing You Could Do', cursive; margin: 0;">
   KhojDu
@@ -236,7 +236,7 @@ MIT License © 2024 <span style="color: orange; font-weight: bold; font-family: 
 
 <div align="center">
 
-**Made with ❤️ in Nepal**
+**Made with ❤️ by Subash**
 
 <span style="color: orange; font-weight: bold; fond-size: 10px;font-family: 'Nothing You Could Do', cursive;">KhojDu</span> - <span style="color: black; font-size: 11px; font-weight: bold; font-family: 'Delius';">FIND YOUR ROOF</span>
 
