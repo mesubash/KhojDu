@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to KhojDu</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }
+        .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🏠 Welcome to KhojDu!</h1>
+        <p>Nepal's Premier Rental Property Platform</p>
+    </div>
+    <div class="content">
+        <h2>Hello <span th:text="${name}"></span>!</h2>
+        <p>Welcome to KhojDu! We're excited to have you join our community of property seekers and landlords.</p>
+
+        <p>With KhojDu, you can:</p>
+        <ul>
+            <li>🔍 Search for your perfect rental property</li>
+            <li>📱 Connect directly with landlords</li>
+            <li>⭐ Read authentic reviews from previous tenants</li>
+            <li>💖 Save properties to your wishlist</li>
+            <li>🔔 Get notifications for new matches</li>
+        </ul>
+
+        <div style="text-align: center;">
+            <a href="https://khojdu.com" class="button">Start Your Property Search</a>
+        </div>
+
+        <p>If you have any questions, our support team is here to help at support@khojdu.com</p>
+
+        <p>Happy house hunting!</p>
+    </div>
+    <div class="footer">
+        <p>&copy; 2024 KhojDu. All rights reserved.</p>
+        <p>Connecting landlords and tenants across Nepal</p>
+    </div>
+</div>
+</body>
+</html>
