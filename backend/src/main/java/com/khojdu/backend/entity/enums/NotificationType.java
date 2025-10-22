@@ -1,0 +1,5 @@
+package com.khojdu.backend.entity.enums;
+
+public enum NotificationType {
+    NEW_MATCH, PRICE_DROP, INQUIRY_RECEIVED, REVIEW_RECEIVED, PROPERTY_APPROVED, VERIFICATION_COMPLETED, COMPLAINT_UPDATE
+}
