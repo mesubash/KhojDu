@@ -20,7 +20,7 @@ import java.security.Principal;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/complaints")
+@RequestMapping("/complaints")
 @RequiredArgsConstructor
 @Tag(name = "Complaints", description = "Complaint management endpoints")
 public class ComplaintController {

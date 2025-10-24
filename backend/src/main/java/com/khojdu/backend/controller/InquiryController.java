@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/inquiries")
+@RequestMapping("/inquiries")
 @RequiredArgsConstructor
 @Tag(name = "Inquiries", description = "Property inquiry and messaging endpoints")
 public class InquiryController {

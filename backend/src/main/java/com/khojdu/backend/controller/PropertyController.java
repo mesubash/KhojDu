@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/properties")
+@RequestMapping("/properties")
 @RequiredArgsConstructor
 @Tag(name = "Properties", description = "Property management endpoints")
 public class PropertyController {

@@ -19,7 +19,7 @@ import java.security.Principal;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/wishlist")
+@RequestMapping("/wishlist")
 @RequiredArgsConstructor
 @Tag(name = "Wishlist", description = "User wishlist management")
 public class WishlistController {
