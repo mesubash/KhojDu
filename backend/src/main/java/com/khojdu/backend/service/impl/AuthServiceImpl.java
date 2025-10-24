@@ -202,7 +202,7 @@ public class AuthServiceImpl implements AuthService {
         // Remove the used token
         passwordResetTokens.remove(token);
 
-        // Invalidate all refresh tokens for security
+        //Invalidate all refresh tokens for security
         refreshTokens.entrySet().removeIf(entry -> entry.getValue().equals(email));
 
         log.info("Password reset successfully for: {}", email);
