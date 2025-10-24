@@ -241,6 +241,12 @@ CREATE TABLE complaints (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     resolved_at TIMESTAMP
 );
+CREATE TABLE complaint_evidence (
+                                    complaint_id UUID NOT NULL REFERENCES complaints(id) ON DELETE CASCADE,
+                                    evidence_url VARCHAR(500) NOT NULL
+);
+
+CREATE INDEX idx_complaint_evidence_complaint ON complaint_evidence(complaint_id);
 
 -- ## ❤️ User Preferences & Wishlist
 
