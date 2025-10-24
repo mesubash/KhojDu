@@ -1,6 +1,10 @@
 package com.khojdu.backend.security;
 
 import com.khojdu.backend.config.JwtConfig;
+import com.khojdu.backend.security.refresh.RefreshTokenService;
+import com.khojdu.backend.exception.InvalidTokenException;
+import com.khojdu.backend.exception.TokenExpiredException;
+import com.khojdu.backend.exception.TokenReuseException;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
@@ -12,7 +16,6 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.util.UUID;
 
 /**
  * Utility class for generating and validating JWT tokens
@@ -23,6 +26,7 @@ import java.util.UUID;
 public class JwtTokenProvider {
 
     private final JwtConfig jwtConfig;
+    private final RefreshTokenService refreshTokenService;
 
     /**
      * Get the signing key for JWT
@@ -51,7 +55,6 @@ public class JwtTokenProvider {
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
-//                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
                 .compact();
 
         log.debug("Generated access token for user: {}", userPrincipal.getEmail());
@@ -61,6 +64,7 @@ public class JwtTokenProvider {
     /**
      * Generate JWT refresh token for authenticated user
      * Refresh tokens have longer expiration time
+     * Also stores the refresh token via RefreshTokenService (Redis-backed) for reuse detection/rotation
      * @param authentication Spring Security authentication object
      * @return JWT refresh token string
      */
@@ -78,8 +82,75 @@ public class JwtTokenProvider {
                 .signWith(getSigningKey())
                 .compact();
 
+        // store in refresh token service (Redis)
+        try {
+            refreshTokenService.store(userPrincipal.getId().toString(), token);
+        } catch (Exception e) {
+            log.warn("Failed to store refresh token for user {}", userPrincipal.getId(), e);
+        }
+
         log.debug("Generated refresh token for user: {}", userPrincipal.getEmail());
         return token;
+    }
+
+    /**
+     * Rotate a refresh token: verify the provided oldToken, produce a new refresh token,
+     * and atomically replace it in the store using RefreshTokenService. If reuse is detected,
+     * revoke all tokens for the user and rethrow the TokenReuseException.
+     * @param oldRefreshToken the refresh token presented by the client
+     * @return newly minted refresh token
+     */
+    public String rotateRefreshToken(String oldRefreshToken) {
+        // validate signature and extract user id
+        Claims claims = parseToken(oldRefreshToken);
+        String type = claims.get("type", String.class);
+        if (!"refresh".equals(type)) throw new RuntimeException("Provided token is not a refresh token");
+
+        String userId = claims.getSubject();
+
+        // create new refresh token
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + jwtConfig.getRefreshExpiration());
+
+        String newToken = Jwts.builder()
+                .subject(userId)
+                .claim("type", "refresh")
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(getSigningKey())
+                .compact();
+
+        try {
+            refreshTokenService.rotate(userId, oldRefreshToken, newToken);
+            return newToken;
+        } catch (TokenReuseException tre) {
+            // revoke all refresh tokens for this user (force logout everywhere)
+            try {
+                refreshTokenService.revokeAll(userId);
+            } catch (Exception e) {
+                log.warn("Failed to revoke tokens after detected reuse for user {}", userId, e);
+            }
+            throw tre;
+        }
+    }
+
+    /**
+     * Validate a refresh token: check signature, type and that it matches the stored token in Redis
+     * @param token refresh token to validate
+     * @return true if valid
+     */
+    public boolean validateRefreshToken(String token) {
+        try {
+            Claims claims = parseToken(token);
+            String type = claims.get("type", String.class);
+            if (!"refresh".equals(type)) return false;
+            String userId = claims.getSubject();
+            // verify stored match
+            return refreshTokenService.validate(userId, token);
+        } catch (Exception e) {
+            log.debug("Refresh token validation failed", e);
+            return false;
+        }
     }
 
     /**
@@ -99,15 +170,15 @@ public class JwtTokenProvider {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (ExpiredJwtException e) {
-            throw new RuntimeException("Token has expired", e);
+            throw new TokenExpiredException("Token has expired", e);
         } catch (UnsupportedJwtException e) {
-            throw new RuntimeException("Unsupported JWT token", e);
+            throw new InvalidTokenException("Unsupported JWT token", e);
         } catch (MalformedJwtException e) {
-            throw new RuntimeException("Invalid JWT token", e);
+            throw new InvalidTokenException("Invalid JWT token", e);
         } catch (JwtException e) {
-            throw new RuntimeException("Invalid JWT signature", e);
+            throw new InvalidTokenException("Invalid JWT signature", e);
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("JWT claims string is empty", e);
+            throw new InvalidTokenException("JWT claims string is empty", e);
         }
     }
 
@@ -143,16 +214,20 @@ public class JwtTokenProvider {
             return true;
         } catch (SignatureException ex) {
             log.error("Invalid JWT signature: {}", ex.getMessage());
+            throw new InvalidTokenException("Invalid JWT signature", ex);
         } catch (MalformedJwtException ex) {
             log.error("Invalid JWT token: {}", ex.getMessage());
+            throw new InvalidTokenException("Invalid JWT token", ex);
         } catch (ExpiredJwtException ex) {
             log.error("Expired JWT token: {}", ex.getMessage());
+            throw new TokenExpiredException("Expired JWT token", ex);
         } catch (UnsupportedJwtException ex) {
             log.error("Unsupported JWT token: {}", ex.getMessage());
+            throw new InvalidTokenException("Unsupported JWT token", ex);
         } catch (IllegalArgumentException ex) {
             log.error("JWT claims string is empty: {}", ex.getMessage());
+            throw new InvalidTokenException("JWT claims string is empty", ex);
         }
-        return false;
     }
 
     /**

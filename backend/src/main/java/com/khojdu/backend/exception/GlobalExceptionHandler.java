@@ -97,10 +97,26 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
-    @ExceptionHandler({InvalidTokenException.class, AuthenticationException.class, BadCredentialsException.class})
+    @ExceptionHandler({InvalidTokenException.class, AuthenticationException.class, BadCredentialsException.class, UnauthorizedException.class})
     public ResponseEntity<ErrorResponse> handleAuthenticationExceptions(
             RuntimeException ex, WebRequest request) {
         log.error("Authentication error: {}", ex.getMessage());
+
+        // If the Unauthorized/Authentication exception wraps a TokenReuseException, surface it as FORBIDDEN
+        Throwable cause = ex;
+        while (cause != null) {
+            if (cause instanceof TokenReuseException) {
+                TokenReuseException tre = (TokenReuseException) cause;
+                ErrorResponse tokenReuseError = new ErrorResponse(
+                        HttpStatus.FORBIDDEN.value(),
+                        "Token Reuse",
+                        tre.getMessage(),
+                        request.getDescription(false).replace("uri=", "")
+                );
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(tokenReuseError);
+            }
+            cause = cause.getCause();
+        }
 
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
@@ -176,6 +192,20 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+    @ExceptionHandler(TokenReuseException.class)
+    public ResponseEntity<ErrorResponse> handleTokenReuseException(
+            TokenReuseException ex, WebRequest request) {
+        log.error("Token reuse detected: {}", ex.getMessage());
+
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.FORBIDDEN.value(),
+                "Token Reuse",
+                ex.getMessage(),
+                request.getDescription(false).replace("uri=", "")
+        );
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
     @ExceptionHandler(Exception.class)

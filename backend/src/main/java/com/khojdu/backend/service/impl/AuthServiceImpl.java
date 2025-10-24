@@ -3,10 +3,7 @@ package com.khojdu.backend.service.impl;
 import com.khojdu.backend.dto.auth.*;
 import com.khojdu.backend.entity.User;
 import com.khojdu.backend.entity.UserProfile;
-import com.khojdu.backend.exception.BadRequestException;
-import com.khojdu.backend.exception.ConflictException;
-import com.khojdu.backend.exception.ResourceNotFoundException;
-import com.khojdu.backend.exception.UnauthorizedException;
+import com.khojdu.backend.exception.*;
 import com.khojdu.backend.repository.UserRepository;
 import com.khojdu.backend.repository.UserProfileRepository;
 import com.khojdu.backend.security.JwtTokenProvider;
@@ -25,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -132,30 +130,54 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public JwtResponse refreshToken(String refreshToken) {
-        String email = refreshTokens.get(refreshToken);
-        if (email == null) {
-            throw new UnauthorizedException("Invalid refresh token");
+        // Try rotating the refresh token using JwtTokenProvider which will throw TokenReuseException
+        try {
+            String newRefreshToken = jwtTokenProvider.rotateRefreshToken(refreshToken);
+
+            // extract user id from new refresh token
+            String userId = jwtTokenProvider.getUserIdFromToken(newRefreshToken);
+            UUID uid = UUID.fromString(userId);
+
+            User user = userRepository.findById(uid)
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                    new UserPrincipal(user), null, new UserPrincipal(user).getAuthorities()
+            );
+
+            String newAccessToken = jwtTokenProvider.generateToken(authentication);
+
+            // Keep in-memory map in sync (remove old token if present and add new one)
+            refreshTokens.remove(refreshToken);
+            refreshTokens.put(newRefreshToken, user.getEmail());
+
+            JwtResponse.UserInfo userInfo = new JwtResponse.UserInfo(
+                    user.getId(), user.getEmail(), user.getFullName(), user.getRole(), user.getIsVerified()
+            );
+
+            return new JwtResponse(newAccessToken, newRefreshToken, userInfo);
+
+        } catch (TokenReuseException tre) {
+            // propagate so GlobalExceptionHandler can format it (IM_USED)
+            throw tre;
+        } catch (InvalidTokenException | TokenExpiredException | IllegalArgumentException ex) {
+            // token parsing/validation errors -> unauthorized
+            log.warn("Refresh token invalid or rotation failed: {}", ex.getMessage());
+            throw new UnauthorizedException("Invalid refresh token", ex);
+        } catch (Exception e) {
+            // If a TokenReuseException is wrapped as a cause, unwrap and rethrow it so it isn't hidden
+            Throwable cause = e;
+            while (cause != null) {
+                if (cause instanceof TokenReuseException) {
+                    throw (TokenReuseException) cause;
+                }
+                cause = cause.getCause();
+            }
+
+            // Any other unexpected error -> unauthorized for refresh
+            log.warn("Refresh token invalid or rotation failed", e);
+            throw new UnauthorizedException("Invalid refresh token", e);
         }
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                new UserPrincipal(user), null, new UserPrincipal(user).getAuthorities()
-        );
-
-        String newAccessToken = jwtTokenProvider.generateToken(authentication);
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(authentication);
-
-        // Remove old refresh token and add new one
-        refreshTokens.remove(refreshToken);
-        refreshTokens.put(newRefreshToken, email);
-
-        JwtResponse.UserInfo userInfo = new JwtResponse.UserInfo(
-                user.getId(), user.getEmail(), user.getFullName(), user.getRole(), user.getIsVerified()
-        );
-
-        return new JwtResponse(newAccessToken, newRefreshToken, userInfo);
     }
 
     @Override
