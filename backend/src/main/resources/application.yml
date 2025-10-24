@@ -1,1 +1,461 @@
-spring.application.name=backend
+# ==========================================
+# KhojDu Backend - Complete Application Configuration
+# ==========================================
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+    include-exception: false
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 1024
+
+spring:
+  application:
+    name: khojdu-backend
+  
+  # ==========================================
+  # DATABASE CONFIGURATION
+  # ==========================================
+  datasource:
+    url: ${DATABASE_URL}
+    hikari:
+      connection-timeout: 20000
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:20}
+      minimum-idle: ${DB_MIN_IDLE:5}
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-test-query: SELECT 1
+      pool-name: KhojDuHikariPool
+  
+  # ==========================================
+  # JPA/HIBERNATE CONFIGURATION
+  # ==========================================
+  jpa:
+    hibernate:
+      ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
+    show-sql: ${SHOW_SQL:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: ${FORMAT_SQL:true}
+        use_sql_comments: true
+        default_schema: public
+        jdbc:
+          lob:
+            non_contextual_creation: true
+          batch_size: 20
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+        generate_statistics: false
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
+    open-in-view: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+  
+  # ==========================================
+  # FLYWAY CONFIGURATION
+  # ==========================================
+  flyway:
+    enabled: false #for dev
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    out-of-order: false
+    placeholder-replacement: true
+    schemas: public
+    table: flyway_schema_history
+    baseline-version: 0
+    clean-disabled: true
+  
+  # ==========================================
+  # REDIS CONFIGURATION
+  # ==========================================
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2000ms}
+      database: ${REDIS_DATABASE:0}
+      jedis:
+        pool:
+          max-active: ${REDIS_MAX_ACTIVE:8}
+          max-idle: ${REDIS_MAX_IDLE:8}
+          min-idle: ${REDIS_MIN_IDLE:0}
+          max-wait: -1ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+        shutdown-timeout: 100ms
+  
+  # ==========================================
+  # CACHE CONFIGURATION
+  # ==========================================
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000  # 1 hour in milliseconds
+      cache-null-values: false
+      key-prefix: "khojdu:"
+      use-key-prefix: true
+    cache-names:
+      - properties
+      - users
+      - amenities
+      - reviews
+  
+  # ==========================================
+  # MAIL CONFIGURATION
+  # ==========================================
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    protocol: smtp
+    test-connection: false
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: ${MAIL_HOST:smtp.gmail.com}
+          connectiontimeout: 5000
+          timeout: 3000
+          writetimeout: 5000
+    default-encoding: UTF-8
+  
+  # ==========================================
+  # SERVLET/MULTIPART CONFIGURATION
+  # ==========================================
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: ${MAX_FILE_SIZE:10MB}
+      max-request-size: ${MAX_REQUEST_SIZE:50MB}
+      file-size-threshold: 2KB
+      location: ${java.io.tmpdir}
+  
+  # ==========================================
+  # THYMELEAF CONFIGURATION (Email Templates)
+  # ==========================================
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+    cache: false
+    check-template-location: true
+  
+  # ==========================================
+  # JACKSON/JSON CONFIGURATION
+  # ==========================================
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: true
+      fail-on-empty-beans: false
+    deserialization:
+      fail-on-unknown-properties: false
+    time-zone: Asia/Kathmandu
+    default-property-inclusion: NON_NULL
+    date-format: yyyy-MM-dd HH:mm:ss
+    mapper:
+      accept-case-insensitive-enums: true
+  
+  # ==========================================
+  # ASYNC CONFIGURATION
+  # ==========================================
+  task:
+    execution:
+      pool:
+        core-size: 2
+        max-size: 5
+        queue-capacity: 100
+        keep-alive: 60s
+      thread-name-prefix: khojdu-async-
+    scheduling:
+      pool:
+        size: 2
+      thread-name-prefix: khojdu-scheduler-
+
+# ==========================================
+# JWT CONFIGURATION
+# ==========================================
+app:
+  jwt:
+    secret: ${JWT_SECRET:khojdu-super-secret-key-for-jwt-token-generation-2024}
+    expiration: ${JWT_EXPIRATION:86400000}        # 24 hours
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}  # 7 days
+    header: Authorization
+    prefix: Bearer
+    issuer: KhojDu
+
+# ==========================================
+# FILE STORAGE CONFIGURATION
+# ==========================================
+file:
+  upload:
+    dir: ${FILE_UPLOAD_DIR:./uploads}
+    temp-dir: ${java.io.tmpdir}
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+    api-key: ${CLOUDINARY_API_KEY:}
+    api-secret: ${CLOUDINARY_API_SECRET:}
+    secure: true
+
+# ==========================================
+# EMAIL CONFIGURATION
+# ==========================================
+email:
+  from: ${EMAIL_FROM:noreply@khojdu.com}
+  from-name: ${EMAIL_FROM_NAME:KhojDu}
+  base-url: ${BASE_URL:http://localhost:3000}
+  verification-expiry-hours: 24
+  password-reset-expiry-hours: 1
+
+# ==========================================
+# PAGINATION CONFIGURATION
+# ==========================================
+pagination:
+  default-page-size: ${PAGINATION_DEFAULT_PAGE_SIZE:20}
+  max-page-size: ${PAGINATION_MAX_PAGE_SIZE:100}
+  one-indexed-parameters: true
+
+# ==========================================
+# SEARCH CONFIGURATION
+# ==========================================
+search:
+  max-results: ${SEARCH_MAX_RESULTS:1000}
+  default-radius: ${SEARCH_DEFAULT_RADIUS_KM:5}  # km
+  enable-fuzzy-search: true
+  fuzzy-threshold: 0.7
+
+# ==========================================
+# BUSINESS LOGIC CONFIGURATION
+# ==========================================
+business:
+  property:
+    max-images: ${MAX_PROPERTY_IMAGES:10}
+    image-formats: jpg,jpeg,png,webp
+    max-image-size: 10485760  # 10MB in bytes
+    featured-price: ${FEATURED_PROPERTY_PRICE_NPR:500}
+  review:
+    moderation-enabled: ${REVIEW_MODERATION_ENABLED:true}
+    min-rating: 1
+    max-rating: 5
+  landlord:
+    auto-approve-verified: ${AUTO_APPROVE_VERIFIED_LANDLORDS:true}
+    verification-required-docs: citizenship_front,citizenship_back
+
+# ==========================================
+# SECURITY CONFIGURATION
+# ==========================================
+security:
+  password:
+    min-length: ${PASSWORD_MIN_LENGTH:8}
+    require-uppercase: ${PASSWORD_REQUIRE_UPPERCASE:true}
+    require-lowercase: ${PASSWORD_REQUIRE_LOWERCASE:true}
+    require-digit: ${PASSWORD_REQUIRE_DIGIT:true}
+    require-special-char: ${PASSWORD_REQUIRE_SPECIAL_CHAR:false}
+  account:
+    max-login-attempts: ${MAX_LOGIN_ATTEMPTS:5}
+    lockout-duration: ${LOCKOUT_DURATION:300}  # seconds
+  token:
+    verification-expiry: 86400000  # 24 hours
+    password-reset-expiry: 3600000  # 1 hour
+
+# ==========================================
+# CORS CONFIGURATION
+# ==========================================
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
+  allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+  allowed-headers: ${CORS_ALLOWED_HEADERS:*}
+  exposed-headers: Authorization,Content-Type,Accept
+  allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+  max-age: ${CORS_MAX_AGE:3600}
+
+# ==========================================
+# RATE LIMITING CONFIGURATION
+# ==========================================
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:true}
+  requests-per-minute: ${RATE_LIMIT_REQUESTS_PER_MINUTE:100}
+  requests-per-hour: ${RATE_LIMIT_REQUESTS_PER_HOUR:1000}
+
+# ==========================================
+# LOGGING CONFIGURATION
+# ==========================================
+logging:
+  level:
+    root: ${LOG_LEVEL:INFO}
+    com.khojdu: ${LOG_LEVEL:INFO}
+    org.springframework.web: WARN
+    org.springframework.security: ${SECURITY_LOG_LEVEL:INFO}
+    org.hibernate.SQL: ${SQL_LOG_LEVEL:WARN}
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.springframework.data: WARN
+    org.springframework.cache: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_FILE_PATH:logs/khojdu-backend.log}
+    max-size: ${LOG_MAX_FILE_SIZE:10MB}
+    max-history: ${LOG_MAX_HISTORY:30}
+    total-size-cap: 1GB
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
+
+## ==========================================
+## ACTUATOR CONFIGURATION
+## ==========================================
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#        include: ${ACTUATOR_EXPOSE_ENDPOINTS:health,info,metrics,prometheus}
+#      base-path: ${ACTUATOR_BASE_PATH:/actuator}
+#      cors:
+#        allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+#        allowed-methods: GET,POST
+#  endpoint:
+#    health:
+#      show-details: ${HEALTH_SHOW_DETAILS:when-authorized}
+#      show-components: when-authorized
+#      probes:
+#        enabled: true
+#    metrics:
+#      enabled: true
+#    prometheus:
+#      enabled: true
+#  health:
+#    defaults:
+#      enabled: true
+#    diskspace:
+#      enabled: true
+#      threshold: 10MB
+#    db:
+#      enabled: true
+#    redis:
+#      enabled: true
+#    mail:
+#      enabled: true
+#  info:
+#    env:
+#      enabled: true
+#    java:
+#      enabled: true
+#    os:
+#      enabled: true
+#  metrics:
+#    export:
+#      prometheus:
+#        enabled: true
+#    distribution:
+#      percentiles-histogram:
+#        http.server.requests: true
+#    tags:
+#      application: ${spring.application.name}
+
+# ==========================================
+# SWAGGER/OPENAPI CONFIGURATION
+# ==========================================
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    disable-swagger-default-url: true
+    display-request-duration: true
+    doc-expansion: none
+    filter: false
+    show-extensions: true
+    show-common-extensions: true
+  show-actuator: false
+  default-consumes-media-type: application/json
+  default-produces-media-type: application/json
+  packages-to-scan: com.khojdu.controller
+  paths-to-match: /**
+
+# ==========================================
+# TIMEZONE CONFIGURATION
+# ==========================================
+timezone:
+  default: Asia/Kathmandu
+
+## ==========================================
+## APPLICATION INFO
+## ==========================================
+#info:
+#  app:
+#    name: ${spring.application.name}
+#    description: KhojDu - Nepal's Premier Rental Property Platform Backend API
+#    version: ${APP_VERSION:1.0.0}
+#    encoding: ${spring.servlet.encoding.charset}
+#    java:
+#      version: ${java.version}
+#  company:
+#    name: KhojDu
+#    email: support@khojdu.com
+#    website: https://khojdu.com
+#
+## ==========================================
+## THREAD POOL CONFIGURATION
+## ==========================================
+#thread-pool:
+#  core-pool-size: 5
+#  max-pool-size: 10
+#  queue-capacity: 100
+#  keep-alive-seconds: 60
+#
+## ==========================================
+## CUSTOM APPLICATION PROPERTIES
+## ==========================================
+#khojdu:
+#  version: 1.0.0
+#  api-version: v1
+#  environment: ${SPRING_PROFILES_ACTIVE:dev}
+#  features:
+#    email-verification: true
+#    landlord-verification: true
+#    property-moderation: true
+#    review-system: true
+#    messaging: true
+#    wishlist: true
+#    complaints: true
+#    notifications: true
+#    analytics: true
+#  limits:
+#    property-images: 10
+#    inquiry-messages: 100
+#    wishlist-items: 50
+#    search-results: 1000
