@@ -9,7 +9,9 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "user_profiles")
@@ -21,7 +23,7 @@ public class UserProfile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private Long id;
+    private UUID id;
 
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false)
@@ -33,10 +35,10 @@ public class UserProfile {
     private String preferredLocation;
 
     @Column(name = "budget_min")
-    private Integer budgetMin;
+    private BigDecimal budgetMin;
 
     @Column(name = "budget_max")
-    private Integer budgetMax;
+    private BigDecimal budgetMax;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "preferred_property_type")

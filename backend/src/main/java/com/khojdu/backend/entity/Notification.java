@@ -5,7 +5,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -39,11 +40,9 @@ public class Notification {
     @Column(nullable = false)
     private String message;
 
-    @ElementCollection
-    @CollectionTable(name = "notification_data", joinColumns = @JoinColumn(name = "notification_id"))
-    @MapKeyColumn(name = "data_key")
-    @Column(name = "data_value")
-    private Map<String, String> data; // Additional data for the notification
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "data", columnDefinition = "jsonb")
+    private Map<String, Object> data;// Additional data for the notification
 
     @Column(name = "is_read")
     private Boolean isRead = false;

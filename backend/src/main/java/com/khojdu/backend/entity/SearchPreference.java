@@ -5,7 +5,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -52,10 +53,9 @@ public class SearchPreference {
     @Column(name = "max_bedrooms")
     private Integer maxBedrooms;
 
-    @ElementCollection
-    @CollectionTable(name = "search_preference_amenities", joinColumns = @JoinColumn(name = "search_preference_id"))
-    @Column(name = "amenity_id")
-    private List<UUID> amenityIds;
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "amenity_ids", columnDefinition = "uuid[]")
+    private UUID[] amenityIds;
 
     // Notification settings
     @Column(name = "notify_new_matches")

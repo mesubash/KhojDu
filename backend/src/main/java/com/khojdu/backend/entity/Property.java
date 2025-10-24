@@ -1,5 +1,5 @@
 package com.khojdu.backend.entity;
-
+import com.khojdu.backend.entity.enums.PropertyStatus;
 import com.khojdu.backend.entity.enums.PropertyType;
 import jakarta.persistence.*;
 import lombok.Data;
