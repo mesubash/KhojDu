@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/amenities")
+@RequestMapping("/api/amenities")
 @RequiredArgsConstructor
 @Tag(name = "Amenities", description = "Property amenities endpoints")
 public class AmenityController {

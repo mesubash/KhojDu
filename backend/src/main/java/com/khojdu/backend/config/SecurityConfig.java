@@ -68,24 +68,24 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authz -> authz
                         // Public endpoints
                         .requestMatchers(
-                                "/auth/**",
-                                "/properties/search",
-                                "/properties/public/**",
-                                "/amenities",
+                                "/api/auth/**",
+                                "/api/properties/search",
+                                "/api/properties/public/**",
+                                "/api/amenities",
                                 "/swagger-ui/**",
                                 "/api-docs/**",
-                                "/actuator/**",
-                                "/uploads/**"
+                                "/api/actuator/**",
+                                "/api/uploads/**"
                         ).permitAll()
 
                         // Admin only endpoints
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/complaints/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/users/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/complaints/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/users/admin/**").hasRole("ADMIN")
 
                         // Landlord endpoints
-                        .requestMatchers("/properties/landlord/**").hasAnyRole("LANDLORD", "ADMIN")
-                        .requestMatchers("/verification/**").hasAnyRole("LANDLORD", "ADMIN")
+                        .requestMatchers("/api/properties/landlord/**").hasAnyRole("LANDLORD", "ADMIN")
+                        .requestMatchers("/api/verification/**").hasAnyRole("LANDLORD", "ADMIN")
 
                         // Authenticated endpoints
                         .anyRequest().authenticated()

@@ -88,11 +88,14 @@ spring:
   # ==========================================
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      # Prefer explicit host/port and credentials to avoid URI parsing surprises
+      host: ${REDIS_HOST:}
+      port: ${REDIS_PORT:15391}
+      username: ${REDIS_USERNAME:}
       password: ${REDIS_PASSWORD:}
-      timeout: ${REDIS_TIMEOUT:2000ms}
-      database: ${REDIS_DATABASE:0}
+      timeout: ${REDIS_TIMEOUT:2000}
+      # If SPRING_REDIS_URL is set explicitly, Lettuce will use it; otherwise host/port are used.
+      url: ${SPRING_REDIS_URL:}
       jedis:
         pool:
           max-active: ${REDIS_MAX_ACTIVE:8}
@@ -101,11 +104,11 @@ spring:
           max-wait: -1ms
       lettuce:
         pool:
-          max-active: 8
-          max-idle: 8
-          min-idle: 0
+          max-active: ${REDIS_MAX_ACTIVE:8}
+          max-idle: ${REDIS_MAX_IDLE:8}
+          min-idle: ${REDIS_MIN_IDLE:0}
         shutdown-timeout: 100ms
-  
+
   # ==========================================
   # CACHE CONFIGURATION
   # ==========================================

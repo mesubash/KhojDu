@@ -20,7 +20,7 @@ import java.security.Principal;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/reviews")
+@RequestMapping("/api/reviews")
 @RequiredArgsConstructor
 @Tag(name = "Reviews", description = "Property review endpoints")
 public class ReviewController {
