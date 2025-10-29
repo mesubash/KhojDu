@@ -2,17 +2,21 @@ package com.khojdu.backend.service.impl;
 
 import com.khojdu.backend.dto.auth.*;
 import com.khojdu.backend.entity.User;
+import com.khojdu.backend.entity.enums.TokenType;
+
 import com.khojdu.backend.entity.UserProfile;
 import com.khojdu.backend.exception.*;
 import com.khojdu.backend.repository.UserRepository;
 import com.khojdu.backend.repository.UserProfileRepository;
 import com.khojdu.backend.security.JwtTokenProvider;
 import com.khojdu.backend.security.UserPrincipal;
+import com.khojdu.backend.security.redis.RedisTokenService;
 import com.khojdu.backend.service.AuthService;
 import com.khojdu.backend.service.EmailService;
 import com.khojdu.backend.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -36,10 +40,9 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final EmailService emailService;
 
-    // In-memory token storage (use Redis in production)
-    private final Map<String, String> passwordResetTokens = new HashMap<>();
-    private final Map<String, String> emailVerificationTokens = new HashMap<>();
-    private final Map<String, String> refreshTokens = new HashMap<>();
+    private final RedisTokenService redisTokenService;
+
+
 
     @Override
     @Transactional
@@ -76,7 +79,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Generate email verification token
         String verificationToken = PasswordUtil.generateSecureToken(32);
-        emailVerificationTokens.put(verificationToken, user.getEmail());
+        redisTokenService.store(verificationToken, user.getEmail(), TokenType.EMAIL_VERIFICATION);
 
         // Send verification email
         emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), verificationToken);
@@ -88,7 +91,10 @@ public class AuthServiceImpl implements AuthService {
 
         String accessToken = jwtTokenProvider.generateToken(authentication);
         String refreshToken = jwtTokenProvider.generateRefreshToken(authentication);
-        refreshTokens.put(refreshToken, user.getEmail());
+        //store refresh token in redis with TTL
+        redisTokenService.store(user.getId().toString(), refreshToken, TokenType.REFRESH);
+
+
 
         JwtResponse.UserInfo userInfo = new JwtResponse.UserInfo(
                 user.getId(), user.getEmail(), user.getFullName(), user.getRole(), user.getIsVerified()
@@ -113,7 +119,9 @@ public class AuthServiceImpl implements AuthService {
 
             String accessToken = jwtTokenProvider.generateToken(authentication);
             String refreshToken = jwtTokenProvider.generateRefreshToken(authentication);
-            refreshTokens.put(refreshToken, user.getEmail());
+
+            //store refresh token in redis with TTL
+            redisTokenService.store(user.getId().toString(), refreshToken, TokenType.REFRESH);
 
             JwtResponse.UserInfo userInfo = new JwtResponse.UserInfo(
                     user.getId(), user.getEmail(), user.getFullName(), user.getRole(), user.getIsVerified()
@@ -147,9 +155,8 @@ public class AuthServiceImpl implements AuthService {
 
             String newAccessToken = jwtTokenProvider.generateToken(authentication);
 
-            // Keep in-memory map in sync (remove old token if present and add new one)
-            refreshTokens.remove(refreshToken);
-            refreshTokens.put(newRefreshToken, user.getEmail());
+            // Keep in redis in sync (remove old token if present and add new one)
+            redisTokenService.rotate(userId, refreshToken, newRefreshToken, TokenType.REFRESH);
 
             JwtResponse.UserInfo userInfo = new JwtResponse.UserInfo(
                     user.getId(), user.getEmail(), user.getFullName(), user.getRole(), user.getIsVerified()
@@ -181,14 +188,14 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout(String email) {
-        log.info("User logging out: {}", email);
+    public void logout(String userId) {
+        log.info("User logging out: {}", userId);
 
         // Remove all refresh tokens for this user
-        refreshTokens.entrySet().removeIf(entry -> entry.getValue().equals(email));
+        redisTokenService.revokeAll(userId, TokenType.REFRESH);
 
         // In a real application, you might also maintain a blacklist of access tokens
-        log.info("User logged out successfully: {}", email);
+        log.info("User logged out successfully: {}", userId);
     }
 
     @Override
@@ -200,7 +207,7 @@ public class AuthServiceImpl implements AuthService {
 
         if (user != null) {
             String resetToken = PasswordUtil.generateSecureToken(32);
-            passwordResetTokens.put(resetToken, email);
+            redisTokenService.store(resetToken, user.getEmail(), TokenType.EMAIL_VERIFICATION);
 
             emailService.sendPasswordResetEmail(email, user.getFullName(), resetToken);
             log.info("Password reset email sent to: {}", email);
@@ -210,24 +217,25 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void resetPassword(String token, String newPassword) {
-        String email = passwordResetTokens.get(token);
-        if (email == null) {
+        String userId = redisTokenService.getTokenUserId(token, TokenType.PASSWORD_RESET);
+        if (userId == null) {
             throw new BadRequestException("Invalid or expired reset token");
         }
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findById(UUID.fromString(userId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
         // Remove the used token
-        passwordResetTokens.remove(token);
+        redisTokenService.revoke(userId, token, TokenType.PASSWORD_RESET);
 
         //Invalidate all refresh tokens for security
-        refreshTokens.entrySet().removeIf(entry -> entry.getValue().equals(email));
+        redisTokenService.revokeAll(user.getId().toString(), TokenType.REFRESH);
 
-        log.info("Password reset successfully for: {}", email);
+
+        log.info("Password reset successfully for: {}", user.getEmail());
     }
 
     @Override
@@ -251,7 +259,7 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         // Invalidate all refresh tokens for security
-        refreshTokens.entrySet().removeIf(entry -> entry.getValue().equals(email));
+        redisTokenService.revokeAll(user.getId().toString(), TokenType.REFRESH);
 
         log.info("Password changed successfully for: {}", email);
     }
@@ -259,21 +267,21 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void verifyEmail(String token) {
-        String email = emailVerificationTokens.get(token);
-        if (email == null) {
+        String userId = redisTokenService.getTokenUserId(token, TokenType.EMAIL_VERIFICATION);
+        if (userId == null) {
             throw new BadRequestException("Invalid or expired verification token");
         }
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findById(UUID.fromString(userId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         user.setIsVerified(true);
         userRepository.save(user);
 
         // Remove the used token
-        emailVerificationTokens.remove(token);
+        redisTokenService.revoke(userId,token, TokenType.EMAIL_VERIFICATION);
 
-        log.info("Email verified successfully for: {}", email);
+        log.info("Email verified successfully for: {}", user.getEmail());
     }
 
     @Override
@@ -284,13 +292,13 @@ public class AuthServiceImpl implements AuthService {
         if (user.getIsVerified()) {
             throw new BadRequestException("Email is already verified");
         }
+        // Remove any existing tokens for this email fetched userId
+        redisTokenService.revokeAll(user.getId().toString(), TokenType.REFRESH);
 
-        // Remove any existing tokens for this email
-        emailVerificationTokens.entrySet().removeIf(entry -> entry.getValue().equals(email));
 
         // Generate new verification token
         String verificationToken = PasswordUtil.generateSecureToken(32);
-        emailVerificationTokens.put(verificationToken, email);
+        redisTokenService.store(String.valueOf(user.getId()), verificationToken, TokenType.EMAIL_VERIFICATION);
 
         emailService.sendVerificationEmail(email, user.getFullName(), verificationToken);
 

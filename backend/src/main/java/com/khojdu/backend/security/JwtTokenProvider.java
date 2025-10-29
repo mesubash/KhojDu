@@ -1,7 +1,8 @@
 package com.khojdu.backend.security;
 
 import com.khojdu.backend.config.JwtConfig;
-import com.khojdu.backend.security.refresh.RefreshTokenService;
+import com.khojdu.backend.entity.enums.TokenType;
+import com.khojdu.backend.security.redis.RedisTokenServiceImpl;
 import com.khojdu.backend.exception.InvalidTokenException;
 import com.khojdu.backend.exception.TokenExpiredException;
 import com.khojdu.backend.exception.TokenReuseException;
@@ -26,7 +27,7 @@ import java.util.Date;
 public class JwtTokenProvider {
 
     private final JwtConfig jwtConfig;
-    private final RefreshTokenService refreshTokenService;
+    private final RedisTokenServiceImpl redisTokenServiceImpl;
 
     /**
      * Get the signing key for JWT
@@ -84,7 +85,7 @@ public class JwtTokenProvider {
 
         // store in refresh token service (Redis)
         try {
-            refreshTokenService.store(userPrincipal.getId().toString(), token);
+            redisTokenServiceImpl.store(userPrincipal.getId().toString(), token, TokenType.REFRESH);
         } catch (Exception e) {
             log.warn("Failed to store refresh token for user {}", userPrincipal.getId(), e);
         }
@@ -121,12 +122,12 @@ public class JwtTokenProvider {
                 .compact();
 
         try {
-            refreshTokenService.rotate(userId, oldRefreshToken, newToken);
+            redisTokenServiceImpl.rotate(userId, oldRefreshToken, newToken, TokenType.REFRESH);
             return newToken;
         } catch (TokenReuseException tre) {
             // revoke all refresh tokens for this user (force logout everywhere)
             try {
-                refreshTokenService.revokeAll(userId);
+                redisTokenServiceImpl.revokeAll(userId, TokenType.REFRESH);
             } catch (Exception e) {
                 log.warn("Failed to revoke tokens after detected reuse for user {}", userId, e);
             }
@@ -146,7 +147,7 @@ public class JwtTokenProvider {
             if (!"refresh".equals(type)) return false;
             String userId = claims.getSubject();
             // verify stored match
-            return refreshTokenService.validate(userId, token);
+            return redisTokenServiceImpl.validate(userId, token, TokenType.REFRESH);
         } catch (Exception e) {
             log.debug("Refresh token validation failed", e);
             return false;

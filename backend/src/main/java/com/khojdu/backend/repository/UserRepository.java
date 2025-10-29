@@ -41,4 +41,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     @Query("SELECT COUNT(u) FROM User u WHERE u.isVerified = true AND u.role = :role")
     Long countVerifiedByRole(@Param("role") UserRole role);
+
+    UUID id(UUID id);
 }

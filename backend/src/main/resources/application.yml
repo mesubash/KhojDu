@@ -3,7 +3,7 @@
 # ==========================================
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${SERVER_PORT:8089}
   servlet:
     context-path: /api
     encoding:
