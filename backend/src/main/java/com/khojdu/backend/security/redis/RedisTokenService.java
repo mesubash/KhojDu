@@ -31,5 +31,11 @@ public interface RedisTokenService {
 
     String getTokenUserId(String token, TokenType tokenType);
 
+
+    void blacklistToken(String token, long durationMs);
+   boolean isTokenBlacklisted(String token);
+
+
+
 }
 

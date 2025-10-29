@@ -19,6 +19,8 @@ public class RedisTokenServiceImpl implements RedisTokenService {
     private static final String PASSWORD_KEY_PREFIX = "reset:token:";
     private static final String EMAIL_VERIFICATION_KEY_PREFIX = "email:token:";
 
+    private static final String BLACKLIST_KEY_PREFIX = "blacklist:token:";
+
     private final StringRedisTemplate redisTemplate;
     private final JwtConfig jwtConfig;
 
@@ -89,7 +91,7 @@ public class RedisTokenServiceImpl implements RedisTokenService {
     }
 
     @Override
-    public String getToken(String token, TokenType tokenType) {
+    public String getToken(String token, TokenType tokenType){
         return redisTemplate.opsForValue().get(tokenType+token);
     }
 
@@ -103,5 +105,32 @@ public class RedisTokenServiceImpl implements RedisTokenService {
         // This returns userId because you stored userId as the value for this key
         return redisTemplate.opsForValue().get(key);
     }
+
+
+
+    /**
+     * Blacklists an access token for the given duration (in milliseconds).
+     */
+    @Override
+    public void blacklistToken(String token, long durationMs) {
+        if (token == null) return;
+
+        String key = BLACKLIST_KEY_PREFIX + token;
+        redisTemplate.opsForValue().set(key, "BLACKLISTED", durationMs, TimeUnit.MILLISECONDS);
+
+        log.info("Blacklisted token for {} ms", durationMs);
+    }
+
+    /**
+     * Checks if the given token is blacklisted.
+     */
+    @Override
+    public boolean isTokenBlacklisted(String token) {
+        if (token == null) return false;
+        String key = BLACKLIST_KEY_PREFIX + token;
+        return redisTemplate.hasKey(key);
+
+    }
+
 
 }

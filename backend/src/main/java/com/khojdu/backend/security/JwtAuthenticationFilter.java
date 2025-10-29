@@ -1,5 +1,6 @@
 package com.khojdu.backend.security;
 
+import com.khojdu.backend.security.redis.RedisTokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
+    private final RedisTokenService redisTokenService;
 
     /**
      * Filter logic to extract and validate JWT token from request
@@ -46,6 +48,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // Validate token and set authentication
             if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
+                if (redisTokenService.isTokenBlacklisted(jwt)) {
+                    log.warn("Rejected blacklisted token: {}", jwt);
+                    throw new SecurityException("Access token has been blacklisted");
+                }
                 UUID userId = UUID.fromString(jwtTokenProvider.getUserIdFromToken(jwt));
 
                 UserDetails userDetails = customUserDetailsService.loadUserById(userId);

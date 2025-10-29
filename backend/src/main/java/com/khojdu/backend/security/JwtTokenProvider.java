@@ -2,6 +2,7 @@ package com.khojdu.backend.security;
 
 import com.khojdu.backend.config.JwtConfig;
 import com.khojdu.backend.entity.enums.TokenType;
+import com.khojdu.backend.security.redis.RedisTokenService;
 import com.khojdu.backend.security.redis.RedisTokenServiceImpl;
 import com.khojdu.backend.exception.InvalidTokenException;
 import com.khojdu.backend.exception.TokenExpiredException;
@@ -28,6 +29,7 @@ public class JwtTokenProvider {
 
     private final JwtConfig jwtConfig;
     private final RedisTokenServiceImpl redisTokenServiceImpl;
+    private final RedisTokenService redisTokenService;
 
     /**
      * Get the signing key for JWT
@@ -108,6 +110,9 @@ public class JwtTokenProvider {
         if (!"refresh".equals(type)) throw new RuntimeException("Provided token is not a refresh token");
 
         String userId = claims.getSubject();
+        if(redisTokenService.isTokenBlacklisted(oldRefreshToken)) {
+            throw new TokenReuseException("Refresh token has been already used or blacklisted");
+        }
 
         // create new refresh token
         Date now = new Date();
@@ -123,11 +128,14 @@ public class JwtTokenProvider {
 
         try {
             redisTokenServiceImpl.rotate(userId, oldRefreshToken, newToken, TokenType.REFRESH);
+            redisTokenService.blacklistToken(oldRefreshToken, 900000);
             return newToken;
         } catch (TokenReuseException tre) {
             // revoke all refresh tokens for this user (force logout everywhere)
             try {
                 redisTokenServiceImpl.revokeAll(userId, TokenType.REFRESH);
+                redisTokenService.blacklistToken(oldRefreshToken, 900000);
+
             } catch (Exception e) {
                 log.warn("Failed to revoke tokens after detected reuse for user {}", userId, e);
             }
@@ -266,5 +274,18 @@ public class JwtTokenProvider {
 
         return claims.getExpiration();
     }
-}
 
+
+    public long getTokenExpiryDuration(String accessToken) {
+        Claims claims = Jwts
+                .parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(accessToken)
+                .getPayload();
+
+        Date expiration = claims.getExpiration();
+        Date now = new Date();
+        return expiration.getTime() - now.getTime();
+    }
+}

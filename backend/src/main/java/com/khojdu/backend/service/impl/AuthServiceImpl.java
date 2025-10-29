@@ -24,8 +24,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -188,11 +186,14 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout(String userId) {
+    public void logout(String accessToken) {
+        String userId = jwtTokenProvider.getUserIdFromToken(accessToken);
         log.info("User logging out: {}", userId);
+        long accessTtlMs = jwtTokenProvider.getTokenExpiryDuration(accessToken);
 
         // Remove all refresh tokens for this user
         redisTokenService.revokeAll(userId, TokenType.REFRESH);
+        redisTokenService.blacklistToken(accessToken, accessTtlMs);
 
         // In a real application, you might also maintain a blacklist of access tokens
         log.info("User logged out successfully: {}", userId);
@@ -244,7 +245,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        // Verify current password
+        // Verify the current password
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
             throw new BadRequestException("Current password is incorrect");
         }
