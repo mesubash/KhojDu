@@ -1,5 +1,6 @@
 package com.khojdu.backend.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.khojdu.backend.dto.auth.*;
 import com.khojdu.backend.dto.common.ApiResponse;
 import com.khojdu.backend.dto.common.SuccessResponse;
@@ -9,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -25,7 +27,7 @@ public class AuthController {
 
     @PostMapping("/register")
     @Operation(summary = "Register a new user", description = "Create a new user account")
-    public ResponseEntity<ApiResponse<JwtResponse>> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<ApiResponse<JwtResponse>> register(@Valid @RequestBody RegisterRequest request) throws Exception {
         JwtResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("User registered successfully", response));
@@ -48,8 +50,10 @@ public class AuthController {
     @PostMapping("/logout")
     @PreAuthorize("hasRole('USER') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "User logout", description = "Logout user and invalidate tokens")
-    public ResponseEntity<ApiResponse<SuccessResponse>> logout(Principal principal) {
-        authService.logout(principal.getName());
+    public ResponseEntity<ApiResponse<SuccessResponse>> logout(@RequestHeader("Authorization") String authHeader) {
+        // Extract token
+        String accessToken = authHeader.replace("Bearer ", "");
+        authService.logout(accessToken);
         return ResponseEntity.ok(ApiResponse.success("Logged out successfully",
                 SuccessResponse.of("User logged out successfully")));
     }

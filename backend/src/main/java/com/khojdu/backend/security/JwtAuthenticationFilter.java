@@ -1,5 +1,6 @@
 package com.khojdu.backend.security;
 
+import com.khojdu.backend.exception.InvalidTokenException;
 import com.khojdu.backend.security.redis.RedisTokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -50,7 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
                 if (redisTokenService.isTokenBlacklisted(jwt)) {
                     log.warn("Rejected blacklisted token: {}", jwt);
-                    throw new SecurityException("Access token has been blacklisted");
+                    throw new InvalidTokenException("Access token has been blacklisted");
                 }
                 UUID userId = UUID.fromString(jwtTokenProvider.getUserIdFromToken(jwt));
 

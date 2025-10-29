@@ -79,8 +79,13 @@ public class AuthServiceImpl implements AuthService {
         String verificationToken = PasswordUtil.generateSecureToken(32);
         redisTokenService.store(verificationToken, user.getEmail(), TokenType.EMAIL_VERIFICATION);
 
-        // Send verification email
-        emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), verificationToken);
+        // Send verification email (do NOT fail registration if email sending fails)
+        try {
+            emailService.sendVerificationEmail(user.getEmail(), user.getFullName(), verificationToken);
+        } catch (Exception e) {
+            log.warn("Failed to send verification email to {}. Registration will continue: {}", user.getEmail(), e.getMessage());
+            // We intentionally do not rethrow to avoid rolling back the registration transaction
+        }
 
         // Generate JWT tokens
         Authentication authentication = new UsernamePasswordAuthenticationToken(
@@ -89,8 +94,8 @@ public class AuthServiceImpl implements AuthService {
 
         String accessToken = jwtTokenProvider.generateToken(authentication);
         String refreshToken = jwtTokenProvider.generateRefreshToken(authentication);
-        //store refresh token in redis with TTL
-        redisTokenService.store(user.getId().toString(), refreshToken, TokenType.REFRESH);
+            //store refresh token in redis with TTL
+            redisTokenService.store(user.getId().toString(), refreshToken, TokenType.REFRESH);
 
 
 
@@ -187,6 +192,16 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void logout(String accessToken) {
+        try{
+            if (!jwtTokenProvider.validateToken(accessToken)) {
+                throw new BadRequestException("Invalid access token");
+            }if(redisTokenService.isTokenBlacklisted(accessToken)){
+                throw new BadRequestException("Access token already used and blacklisted");
+            }
+        } catch (TokenExpiredException tee) {
+            // Even if token is expired, we can still extract userId for blacklisting
+            log.info("Access token already expired during logout");
+        }
         String userId = jwtTokenProvider.getUserIdFromToken(accessToken);
         log.info("User logging out: {}", userId);
         long accessTtlMs = jwtTokenProvider.getTokenExpiryDuration(accessToken);
@@ -306,3 +321,4 @@ public class AuthServiceImpl implements AuthService {
         log.info("Verification email resent to: {}", email);
     }
 }
+

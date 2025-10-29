@@ -4,13 +4,13 @@ import com.khojdu.backend.dto.auth.*;
 
 public interface AuthService {
 
-    JwtResponse register(RegisterRequest request);
+    JwtResponse register(RegisterRequest request) throws Exception;
 
     JwtResponse login(LoginRequest request);
 
     JwtResponse refreshToken(String refreshToken);
 
-    void logout(String email);
+    void logout(String accessToken);
 
     void forgotPassword(String email);
 

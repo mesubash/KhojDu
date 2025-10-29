@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.sql.SQLOutput;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -56,9 +57,11 @@ public class RedisTokenServiceImpl implements RedisTokenService {
         if (userId == null) throw new TokenReuseException("Missing userId for rotation");
 
         String key = keyFor(userId, tokenType);
+        System.out.println("Rotating token for key: " + key + ", oldToken: " + oldToken + ", newToken: " + newToken);
         String previous = redisTemplate.opsForValue().getAndSet(key, newToken);
+        System.out.println("Previous token: " + previous);
 
-        if (previous == null || !previous.equals(oldToken)) {
+        if (previous == null || previous.equals(oldToken)) {
             redisTemplate.delete(key);
             throw new TokenReuseException("Refresh token reuse detected for user: " + userId);
         }
@@ -117,6 +120,7 @@ public class RedisTokenServiceImpl implements RedisTokenService {
 
         String key = BLACKLIST_KEY_PREFIX + token;
         redisTemplate.opsForValue().set(key, "BLACKLISTED", durationMs, TimeUnit.MILLISECONDS);
+
 
         log.info("Blacklisted token for {} ms", durationMs);
     }

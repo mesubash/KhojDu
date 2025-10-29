@@ -13,9 +13,9 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import jakarta.mail.MessagingException;
+import jakarta.mail.internet.AddressException;
+import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
-import java.util.HashMap;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -29,6 +29,42 @@ public class EmailServiceImpl implements EmailService {
     @Value("${email.from}")
     private String fromEmail;
 
+    private static final String FALLBACK_FROM = "no-reply@khojdu.com";
+
+    private String sanitizeSender(String configuredFrom) {
+        if (configuredFrom == null) return FALLBACK_FROM;
+        String candidate = configuredFrom.trim();
+        try {
+            InternetAddress ia = new InternetAddress(candidate);
+            ia.validate();
+            return ia.getAddress();
+        } catch (AddressException e) {
+            log.warn("Configured 'from' address is invalid ('{}'), falling back to {}: {}", configuredFrom, FALLBACK_FROM, e.getMessage());
+            return FALLBACK_FROM;
+        }
+    }
+
+    private String validateRecipient(String recipient) {
+        if (recipient == null) {
+            throw new RuntimeException("Recipient email is null");
+        }
+        String candidate = recipient.trim();
+        // Remove control characters (newlines, tabs, etc.) which can make the domain invalid
+        candidate = candidate.replaceAll("\\p{Cntrl}", "");
+        // Remove surrounding angle brackets or quotes if present: "<a@b.com>" or '"a@b.com"'
+        if (candidate.startsWith("<") && candidate.endsWith(">") && candidate.length() > 2) {
+            candidate = candidate.substring(1, candidate.length() - 1).trim();
+        }
+        try {
+            InternetAddress ia = new InternetAddress(candidate);
+            ia.validate();
+            return ia.getAddress();
+        } catch (AddressException e) {
+            log.error("Invalid recipient email '{}': {}", recipient, e.getMessage());
+            throw new RuntimeException("Invalid recipient email address");
+        }
+    }
+
     @Override
     public void sendVerificationEmail(String email, String fullName, String verificationToken) {
         log.info("Sending verification email to: {}", email);
@@ -37,8 +73,13 @@ public class EmailServiceImpl implements EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
-            helper.setFrom(fromEmail);
-            helper.setTo(email);
+            // sanitize configured sender and recipient
+            String sender = sanitizeSender(fromEmail);
+            helper.setFrom(sender);
+
+            String to = validateRecipient(email);
+            helper.setTo(to);
+
             helper.setSubject("Verify Your KhojDu Account");
 
             Context context = new Context();
@@ -65,8 +106,12 @@ public class EmailServiceImpl implements EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
-            helper.setFrom(fromEmail);
-            helper.setTo(email);
+            String sender = sanitizeSender(fromEmail);
+            helper.setFrom(sender);
+
+            String to = validateRecipient(email);
+            helper.setTo(to);
+
             helper.setSubject("Reset Your KhojDu Password");
 
             Context context = new Context();
@@ -93,8 +138,12 @@ public class EmailServiceImpl implements EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
-            helper.setFrom(fromEmail);
-            helper.setTo(email);
+            String sender = sanitizeSender(fromEmail);
+            helper.setFrom(sender);
+
+            String to = validateRecipient(email);
+            helper.setTo(to);
+
             helper.setSubject("Welcome to KhojDu!");
 
             Context context = new Context();
@@ -118,8 +167,11 @@ public class EmailServiceImpl implements EmailService {
 
         try {
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(email);
+            message.setFrom(sanitizeSender(fromEmail));
+
+            String to = validateRecipient(email);
+            message.setTo(to);
+
             message.setSubject("Your Property Has Been Approved!");
             message.setText(String.format(
                     "Dear %s,\n\nGreat news! Your property listing '%s' has been approved and is now live on KhojDu.\n\nBest regards,\nThe KhojDu Team",
@@ -140,8 +192,11 @@ public class EmailServiceImpl implements EmailService {
 
         try {
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(email);
+            message.setFrom(sanitizeSender(fromEmail));
+
+            String to = validateRecipient(email);
+            message.setTo(to);
+
             message.setSubject("New Inquiry for Your Property");
             message.setText(String.format(
                     "Dear %s,\n\nYou have received a new inquiry for your property '%s':\n\n%s\n\nLog in to KhojDu to respond.\n\nBest regards,\nThe KhojDu Team",
