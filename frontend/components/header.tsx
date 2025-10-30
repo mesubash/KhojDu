@@ -82,6 +82,15 @@ export function Header({ isAuthenticated = false, userInfo, hideNavigation = fal
                   />
                 </Link>
               ))}
+              {/* Highlighted external link (text-highlighted, not background) */}
+              <a
+                href="https://rentle.subashsdhami.com.np"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-2 text-sm font-semibold transition-all duration-300 text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600 hover:opacity-90"
+              >
+                Other Renting
+              </a>
             </nav>
           )}
 
@@ -187,6 +196,16 @@ export function Header({ isAuthenticated = false, userInfo, hideNavigation = fal
                   {item.name}
                 </Link>
               ))}
+              {/* Mobile highlighted external link */}
+              <a
+                href="https://rentle.subashsdhami.com.np"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block px-3 py-2 text-base font-semibold transition-colors rounded-md text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Other Renting
+              </a>
               <div className="border-t pt-4 mt-4">
                 {isAuthenticated ? (
                   <>

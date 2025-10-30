@@ -122,6 +122,17 @@ export default function SearchPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-4 sm:mb-6">
             Find Your Perfect Room
           </h1>
+          <p className="text-sm text-muted-foreground mb-4">
+            Looking for other renting options? 
+            <a
+              href="https://rentle.subashsdhami.com.np"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600 ml-1"
+            >
+              rentle.subashsdhami.com.np
+            </a>
+          </p>
 
           <Card className="p-4 sm:p-6 rounded-xl shadow-sm">
             <div className="space-y-4 sm:space-y-6">

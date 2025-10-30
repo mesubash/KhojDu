@@ -11,6 +11,7 @@ export function Footer() {
       { name: "How It Works", href: "/how-it-works" },
       { name: "Careers", href: "/careers" },
       { name: "Press", href: "/press" },
+      { name: "Rentle (external)", href: "https://rentle.subashsdhami.com.np" },
     ],
     support: [
       { name: "Help Center", href: "/help" },
@@ -59,7 +60,13 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.company.map((link) => (
                 <li key={link.name}>
-                  <Link href={link.href} className="text-muted-foreground hover:text-primary transition-colors">
+                  {/* External links are preserved — next/link handles external but we add safety attributes when appropriate */}
+                  <Link
+                    href={link.href}
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                    target={link.href?.startsWith("http") ? "_blank" : undefined}
+                    rel={link.href?.startsWith("http") ? "noopener noreferrer" : undefined}
+                  >
                     {link.name}
                   </Link>
                 </li>
