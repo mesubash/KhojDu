@@ -46,10 +46,10 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional
-    public PropertyResponse createProperty(PropertyCreateRequest request, String landlordEmail) {
-        log.info("Creating property for landlord: {}", landlordEmail);
+    public PropertyResponse createProperty(PropertyCreateRequest request, String landlordId) {
+        log.info("Creating property for landlord: {}", landlordId);
 
-        User landlord = userRepository.findByEmail(landlordEmail)
+        User landlord = userRepository.findById(UUID.fromString(landlordId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (!landlord.getRole().name().equals("LANDLORD") && !landlord.getRole().name().equals("ADMIN")) {
@@ -127,13 +127,13 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional
-    public PropertyResponse updateProperty(UUID propertyId, PropertyUpdateRequest request, String landlordEmail) {
-        log.info("Updating property: {} by landlord: {}", propertyId, landlordEmail);
+    public PropertyResponse updateProperty(UUID propertyId, PropertyUpdateRequest request, String landlordId) {
+        log.info("Updating property: {} by landlord: {}", propertyId, landlordId);
 
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
 
-        User landlord = userRepository.findByEmail(landlordEmail)
+        User landlord = userRepository.findById(UUID.fromString(landlordId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Check ownership
@@ -204,13 +204,13 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional
-    public void deleteProperty(UUID propertyId, String landlordEmail) {
-        log.info("Deleting property: {} by landlord: {}", propertyId, landlordEmail);
+    public void deleteProperty(UUID propertyId, String landlordId) {
+        log.info("Deleting property: {} by landlord: {}", propertyId, landlordId);
 
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
 
-        User landlord = userRepository.findByEmail(landlordEmail)
+        User landlord = userRepository.findById(UUID.fromString(landlordId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Check ownership
@@ -234,7 +234,7 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional
-    public PropertyResponse getPublicPropertyById(UUID propertyId, String userEmail) {
+    public PropertyResponse getPublicPropertyById(UUID propertyId, String userId) {
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
 
@@ -244,8 +244,8 @@ public class PropertyServiceImpl implements PropertyService {
 
         // Record property view
         User user = null;
-        if (userEmail != null) {
-            user = userRepository.findByEmail(userEmail).orElse(null);
+        if (userId != null) {
+            user = userRepository.findById(UUID.fromString(userId)).orElse(null);
         }
 
         PropertyView view = new PropertyView();
@@ -304,8 +304,8 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional(readOnly = true)
-    public PagedResponse<PropertyListResponse> getLandlordProperties(String landlordEmail, int page, int size) {
-        User landlord = userRepository.findByEmail(landlordEmail)
+    public PagedResponse<PropertyListResponse> getLandlordProperties(String landlordId, int page, int size) {
+        User landlord = userRepository.findById(UUID.fromString(landlordId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Pageable pageable = PaginationUtil.createPageable(page, size, "createdAt", "DESC");
@@ -349,13 +349,13 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional
-    public List<String> uploadPropertyImages(UUID propertyId, List<MultipartFile> images, String landlordEmail) {
+    public List<String> uploadPropertyImages(UUID propertyId, List<MultipartFile> images, String landlordId) {
         log.info("Uploading {} images for property: {}", images.size(), propertyId);
 
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
 
-        User landlord = userRepository.findByEmail(landlordEmail)
+        User landlord = userRepository.findById(UUID.fromString(landlordId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Check ownership
@@ -396,13 +396,13 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional
-    public void deletePropertyImage(UUID propertyId, UUID imageId, String landlordEmail) {
+    public void deletePropertyImage(UUID propertyId, UUID imageId, String landlordId) {
         log.info("Deleting image: {} from property: {}", imageId, propertyId);
 
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
 
-        User landlord = userRepository.findByEmail(landlordEmail)
+        User landlord = userRepository.findById(UUID.fromString(landlordId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Check ownership
@@ -436,13 +436,13 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional
-    public void setPrimaryImage(UUID propertyId, UUID imageId, String landlordEmail) {
+    public void setPrimaryImage(UUID propertyId, UUID imageId, String landlordId) {
         log.info("Setting primary image: {} for property: {}", imageId, propertyId);
 
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
 
-        User landlord = userRepository.findByEmail(landlordEmail)
+        User landlord = userRepository.findById(UUID.fromString(landlordId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Check ownership
@@ -474,11 +474,11 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional(readOnly = true)
-    public PropertyStatsResponse getPropertyStats(UUID propertyId, String landlordEmail) {
+    public PropertyStatsResponse getPropertyStats(UUID propertyId, String landlordId) {
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
 
-        User landlord = userRepository.findByEmail(landlordEmail)
+        User landlord = userRepository.findById(UUID.fromString(landlordId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Check ownership
@@ -496,13 +496,13 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional
-    public void toggleAvailability(UUID propertyId, String landlordEmail) {
+    public void toggleAvailability(UUID propertyId, String landlordId) {
         log.info("Toggling availability for property: {}", propertyId);
 
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
 
-        User landlord = userRepository.findByEmail(landlordEmail)
+        User landlord = userRepository.findById(UUID.fromString(landlordId))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         // Check ownership

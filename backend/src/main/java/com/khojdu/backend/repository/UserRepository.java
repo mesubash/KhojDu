@@ -43,4 +43,5 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Long countVerifiedByRole(@Param("role") UserRole role);
 
     UUID id(UUID id);
+
 }

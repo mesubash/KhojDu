@@ -41,7 +41,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         Map<String, Object> errorDetails = new HashMap<>();
         errorDetails.put("success", false);
         errorDetails.put("status", HttpServletResponse.SC_UNAUTHORIZED);
-        errorDetails.put("error", "Unauthorized");
+        errorDetails.put("error", "Unauthorized/Token Expired");
         errorDetails.put("message", "You need to login first to access this resource");
         errorDetails.put("path", request.getServletPath());
         errorDetails.put("timestamp", LocalDateTime.now().toString());
