@@ -143,6 +143,7 @@ public class AuthServiceImpl implements AuthService {
     public JwtResponse refreshToken(String refreshToken) {
         // Try rotating the refresh token using JwtTokenProvider which will throw TokenReuseException
         try {
+            // rotateRefreshToken() already handles Redis rotation and blacklisting
             String newRefreshToken = jwtTokenProvider.rotateRefreshToken(refreshToken);
 
             // extract user id from new refresh token
@@ -158,8 +159,8 @@ public class AuthServiceImpl implements AuthService {
 
             String newAccessToken = jwtTokenProvider.generateToken(authentication);
 
-            // Keep in redis in sync (remove old token if present and add new one)
-            redisTokenService.rotate(userId, refreshToken, newRefreshToken, TokenType.REFRESH);
+            // Note: No need to call redisTokenService.rotate() here - it's already done
+            // by jwtTokenProvider.rotateRefreshToken() above
 
             JwtResponse.UserInfo userInfo = new JwtResponse.UserInfo(
                     user.getId(), user.getEmail(), user.getFullName(), user.getRole(), user.getIsVerified()

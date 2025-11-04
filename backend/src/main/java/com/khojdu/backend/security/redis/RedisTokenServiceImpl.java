@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.sql.SQLOutput;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -57,20 +56,40 @@ public class RedisTokenServiceImpl implements RedisTokenService {
         if (userId == null) throw new TokenReuseException("Missing userId for rotation");
 
         String key = keyFor(userId, tokenType);
-        System.out.println("Rotating token for key: " + key + ", oldToken: " + oldToken + ", newToken: " + newToken);
-        String previous = redisTemplate.opsForValue().getAndSet(key, newToken);
-        System.out.println("Previous token: " + previous);
+        log.debug("Rotating token for key: {}", key);
 
-        if (previous == null || previous.equals(oldToken)) {
+        // Get the currently stored token for this user
+        String storedToken = redisTemplate.opsForValue().get(key);
+        log.debug("Stored token for user {}: {}", userId, storedToken != null ? "exists" : "null");
+
+        // If no stored token or the stored token doesn't match the old token being rotated,
+        // this indicates token reuse (someone is trying to use an old/invalid token)
+        if (storedToken == null || !storedToken.equals(oldToken)) {
+            log.warn("Token reuse detected for user {}. Stored token exists: {}",
+                     userId, storedToken != null);
+
+            // Revoke all tokens for security
             redisTemplate.delete(key);
+            if (storedToken != null) {
+                redisTemplate.delete(tokenType + storedToken);
+            }
+
             throw new TokenReuseException("Refresh token reuse detected for user: " + userId);
         }
 
+        // Valid rotation: update the stored token
+        redisTemplate.opsForValue().set(key, newToken);
+
         long ttlMs = jwtConfig.getRefreshExpiration();
         redisTemplate.expire(key, ttlMs, TimeUnit.MILLISECONDS);
+
+        // Store reverse mapping (token -> userId)
         redisTemplate.opsForValue().set(tokenType + newToken, userId, ttlMs, TimeUnit.MILLISECONDS);
 
-        log.info("Rotated {} token for user {}", tokenType, userId);
+        // Clean up old token reverse mapping
+        redisTemplate.delete(tokenType + oldToken);
+
+        log.info("Successfully rotated {} token for user {}", tokenType, userId);
     }
 
     @Override

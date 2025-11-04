@@ -1,5 +1,6 @@
 package com.khojdu.backend.dto.auth;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.khojdu.backend.entity.enums.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -12,13 +13,23 @@ import java.util.UUID;
 @AllArgsConstructor
 public class JwtResponse {
     private String accessToken;
-    private String refreshToken;
     private String tokenType = "Bearer";
     private UserInfo user;
 
+    // Keep refreshToken for internal use but exclude from JSON serialization
+    @JsonIgnore
+    private String refreshToken;
+
+    // Constructor with refreshToken (for internal use by service layer)
     public JwtResponse(String accessToken, String refreshToken, UserInfo user) {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
+        this.user = user;
+    }
+
+    // Constructor without refreshToken (for API responses)
+    public JwtResponse(String accessToken, UserInfo user) {
+        this.accessToken = accessToken;
         this.user = user;
     }
 
