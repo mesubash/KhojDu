@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cookie Checker</title>
+</head>
+<body>
+    <h1>Check Cookies</h1>
+    <button onclick="checkCookies()">Check All Cookies</button>
+    <pre id="output"></pre>
+    
+    <script>
+        function checkCookies() {
+            const output = document.getElementById('output');
+            output.textContent = 'All cookies:\n' + document.cookie + '\n\n';
+            output.textContent += 'Note: HttpOnly cookies will NOT appear here.\n';
+            output.textContent += 'Check DevTools → Application → Cookies to see HttpOnly cookies.';
+        }
+    </script>
+</body>
+</html>

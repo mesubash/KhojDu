@@ -118,11 +118,7 @@ export default function CreateListingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header isAuthenticated={true} userInfo={{
-        name: "Landlord User",
-        email: "landlord@khojdu.com",
-        initials: "L"
-      }} />
+      <Header />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="mb-6 sm:mb-8">

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useAuth } from "@/context/AuthContext"
 // import { useTranslation } from "@/lib/i18n"x
 import { Menu, X, MessageSquare, User, LogOut, Settings } from "lucide-react"
 import { useState } from "react"
@@ -18,20 +19,32 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface HeaderProps {
-  isAuthenticated?: boolean
-  userInfo?: {
-    name: string
-    email: string
-    avatar?: string
-    initials?: string
-  }
   hideNavigation?: boolean
 }
 
-export function Header({ isAuthenticated = false, userInfo, hideNavigation = false }: HeaderProps) {
+export function Header({ hideNavigation = false }: HeaderProps) {
   // const { t } = useTranslation()
+  const { user, isAuthenticated, logout } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const pathname = usePathname()
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch (error) {
+      console.error("Logout error:", error)
+    }
+  }
+
+  // Create user info from auth context
+  const userInfo = user ? {
+    name: user.fullName || user.email,
+    email: user.email,
+    avatar: user.avatar,
+    initials: user.fullName
+      ? user.fullName.split(' ').map(n => n[0]).join('').toUpperCase()
+      : user.email.charAt(0).toUpperCase()
+  } : undefined
 
   const navigation = [
     { name: "Home", href: "/" },
@@ -65,20 +78,18 @@ export function Header({ isAuthenticated = false, userInfo, hideNavigation = fal
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`relative px-3 py-2 text-sm font-medium transition-all duration-300 hover:text-orange-600 group ${
-                    isActiveRoute(item.href) 
-                      ? "text-orange-600" 
+                  className={`relative px-3 py-2 text-sm font-medium transition-all duration-300 hover:text-orange-600 group ${isActiveRoute(item.href)
+                      ? "text-orange-600"
                       : "text-muted-foreground"
-                  }`}
+                    }`}
                 >
                   {item.name}
                   {/* Animated underline */}
-                  <span 
-                    className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-orange-500 to-orange-600 transform transition-all duration-300 ${
-                      isActiveRoute(item.href) 
-                        ? "scale-x-100 opacity-100" 
+                  <span
+                    className={`absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-orange-500 to-orange-600 transform transition-all duration-300 ${isActiveRoute(item.href)
+                        ? "scale-x-100 opacity-100"
                         : "scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-70"
-                    }`}
+                      }`}
                   />
                 </Link>
               ))}
@@ -97,7 +108,7 @@ export function Header({ isAuthenticated = false, userInfo, hideNavigation = fal
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-4">
             <ThemeToggle />
-            
+
             {isAuthenticated ? (
               <>
                 <Link href="/messages">
@@ -106,13 +117,13 @@ export function Header({ isAuthenticated = false, userInfo, hideNavigation = fal
                     Messages
                   </Button>
                 </Link>
-                
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="relative h-8 w-8 rounded-full">
-                      <Avatar className="h-8 w-8">
+                    <Button variant="ghost" size="sm" className="relative h-8 w-8 rounded-full cursor-pointer hover:opacity-80 transition-opacity">
+                      <Avatar className="h-8 w-8 cursor-pointer">
                         <AvatarImage src={userInfo?.avatar} alt={userInfo?.name} />
-                        <AvatarFallback className="bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-400">
+                        <AvatarFallback className="bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-400 cursor-pointer">
                           {userInfo?.initials || "U"}
                         </AvatarFallback>
                       </Avatar>
@@ -143,7 +154,7 @@ export function Header({ isAuthenticated = false, userInfo, hideNavigation = fal
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
                       Log out
                     </DropdownMenuItem>
@@ -186,11 +197,10 @@ export function Header({ isAuthenticated = false, userInfo, hideNavigation = fal
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`block px-3 py-2 text-base font-medium transition-colors rounded-md ${
-                    isActiveRoute(item.href)
+                  className={`block px-3 py-2 text-base font-medium transition-colors rounded-md ${isActiveRoute(item.href)
                       ? "text-orange-600 bg-orange-50 dark:bg-orange-950/20"
                       : "text-muted-foreground hover:text-orange-600 hover:bg-muted"
-                  }`}
+                    }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.name}
@@ -239,7 +249,11 @@ export function Header({ isAuthenticated = false, userInfo, hideNavigation = fal
                         Dashboard
                       </Button>
                     </Link>
-                    <Button variant="ghost" className="w-full justify-start mt-2 text-red-600 hover:text-red-700">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start mt-2 text-red-600 hover:text-red-700"
+                      onClick={handleLogout}
+                    >
                       <LogOut className="mr-2 h-4 w-4" />
                       Log out
                     </Button>
@@ -297,7 +311,11 @@ export function Header({ isAuthenticated = false, userInfo, hideNavigation = fal
                   Back to Home
                 </Button>
               </Link>
-              <Button variant="ghost" className="w-full justify-start mt-2 text-red-600 hover:text-red-700">
+              <Button
+                variant="ghost"
+                className="w-full justify-start mt-2 text-red-600 hover:text-red-700"
+                onClick={handleLogout}
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 Log out
               </Button>

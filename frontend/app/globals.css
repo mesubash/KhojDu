@@ -4,74 +4,78 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 0 0% 3.9%;
+  /* Light mode - Vibrant and clean */
+  --background: 220 25% 97%;
+  --foreground: 222 47% 11%;
   --card: 0 0% 100%;
-  --card-foreground: 0 0% 3.9%;
+  --card-foreground: 222 47% 11%;
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 3.9%;
-  --primary: 0 0% 9%;
-  --primary-foreground: 0 0% 98%;
-  --secondary: 0 0% 96.1%;
-  --secondary-foreground: 0 0% 9%;
-  --muted: 0 0% 96.1%;
-  --muted-foreground: 0 0% 45.1%;
-  --accent: 0 0% 96.1%;
-  --accent-foreground: 0 0% 9%;
-  --destructive: 0 84.2% 60.2%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 24 95% 53%;
+  /* Orange primary */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 24 95% 53%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 89.8%;
-  --input: 0 0% 89.8%;
-  --ring: 0 0% 3.9%;
-  --chart-1: 12 76% 61%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 24 95% 53%;
+  --chart-1: 24 95% 53%;
   --chart-2: 173 58% 39%;
   --chart-3: 197 37% 24%;
   --chart-4: 43 74% 66%;
   --chart-5: 27 87% 67%;
-  --radius: 0.5rem;
+  --radius: 0.75rem;
   --sidebar: 0 0% 100%;
-  --sidebar-foreground: 0 0% 3.9%;
-  --sidebar-primary: 0 0% 9%;
-  --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 0 0% 96.1%;
-  --sidebar-accent-foreground: 0 0% 9%;
-  --sidebar-border: 0 0% 89.8%;
-  --sidebar-ring: 0 0% 3.9%;
+  --sidebar-foreground: 222 47% 11%;
+  --sidebar-primary: 24 95% 53%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 14% 96%;
+  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-ring: 24 95% 53%;
 }
 
 .dark {
-  --background: 0 0% 3.9%;
-  --foreground: 0 0% 98%;
-  --card: 0 0% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --popover: 0 0% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 0 0% 98%;
-  --primary-foreground: 0 0% 9%;
-  --secondary: 0 0% 14.9%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 0 0% 14.9%;
-  --muted-foreground: 0 0% 63.9%;
-  --accent: 0 0% 14.9%;
-  --accent-foreground: 0 0% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 14.9%;
-  --input: 0 0% 14.9%;
-  --ring: 0 0% 83.1%;
-  --chart-1: 220 70% 50%;
+  /* Dark mode - Deep and rich with glassmorphism */
+  --background: 222 47% 6%;
+  --foreground: 210 40% 98%;
+  --card: 222 47% 11%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 24 95% 53%;
+  /* Orange primary */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 24 95% 53%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217 33% 17%;
+  --input: 217 33% 17%;
+  --ring: 24 95% 53%;
+  --chart-1: 24 95% 53%;
   --chart-2: 160 60% 45%;
   --chart-3: 30 80% 55%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
-  --sidebar: 0 0% 3.9%;
-  --sidebar-foreground: 0 0% 98%;
-  --sidebar-primary: 0 0% 98%;
-  --sidebar-primary-foreground: 0 0% 9%;
-  --sidebar-accent: 0 0% 14.9%;
-  --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-border: 0 0% 14.9%;
-  --sidebar-ring: 0 0% 83.1%;
+  --sidebar: 222 47% 11%;
+  --sidebar-foreground: 210 40% 98%;
+  --sidebar-primary: 24 95% 53%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 217 33% 17%;
+  --sidebar-accent-foreground: 210 40% 98%;
+  --sidebar-border: 217 33% 17%;
+  --sidebar-ring: 24 95% 53%;
 }
 
 @theme inline {
@@ -117,8 +121,41 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Ensure all interactive elements show pointer cursor */
+  button,
+  a,
+  [role="button"],
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  label[for],
+  select,
+  summary,
+  [tabindex]:not([tabindex="-1"]) {
+    cursor: pointer;
+  }
+
+  /* Disabled elements should show not-allowed cursor */
+  button:disabled,
+  [disabled],
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  /* Input fields should show text cursor */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  textarea {
+    cursor: text;
   }
 }
 
@@ -182,6 +219,7 @@ html {
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -211,4 +249,75 @@ html {
   .bg-clip-text {
     @apply text-gray-900 bg-none;
   }
+}
+
+/* Glassmorphism Utilities */
+@layer components {
+  .glass {
+    @apply bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 shadow-xl;
+  }
+
+  .glass-card {
+    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-2xl rounded-2xl;
+  }
+
+  .glass-frosted {
+    @apply bg-white/60 dark:bg-gray-900/60 backdrop-blur-3xl border border-white/30 dark:border-gray-700/40;
+  }
+
+  .glass-subtle {
+    @apply bg-white/50 dark:bg-gray-900/50 backdrop-blur-lg border border-gray-200/30 dark:border-gray-700/20;
+  }
+
+  .gradient-orange {
+    @apply bg-gradient-to-r from-orange-500 to-orange-600 dark:from-orange-600 dark:to-orange-700;
+  }
+
+  .gradient-bg {
+    @apply bg-gradient-to-br from-orange-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-orange-500 to-orange-600 dark:from-orange-400 dark:to-orange-500 bg-clip-text text-transparent;
+  }
+
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl;
+  }
+
+  .smooth-shadow {
+    @apply shadow-lg shadow-orange-500/10 dark:shadow-orange-500/20;
+  }
+}
+
+/* Animated gradient background */
+@keyframes gradient-shift {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animated-gradient {
+  background: linear-gradient(-45deg,
+      theme('colors.orange.500'),
+      theme('colors.orange.600'),
+      theme('colors.orange.700'),
+      theme('colors.orange.600'));
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+.dark .animated-gradient {
+  background: linear-gradient(-45deg,
+      theme('colors.orange.600'),
+      theme('colors.orange.700'),
+      theme('colors.orange.800'),
+      theme('colors.orange.700'));
+  background-size: 400% 400%;
 }

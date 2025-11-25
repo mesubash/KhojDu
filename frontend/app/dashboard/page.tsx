@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -8,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Search, Plus, MessageSquare, LogOut, Edit, Trash2, Eye, MapPin, Menu, X, Star, TrendingUp } from "lucide-react"
 import { Header } from "@/components/header"
 import Link from "next/link"
+import { useAuth } from "@/context/AuthContext"
 
 const mockListings = [
   {
@@ -81,8 +83,35 @@ const mockStats = [
 ]
 
 export default function LandlordDashboard() {
+  const router = useRouter()
+  const { user, isAuthenticated, isLoading } = useAuth()
   const [activeTab, setActiveTab] = useState("overview")
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Protect the dashboard - redirect if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      console.log('[Dashboard] User not authenticated, redirecting to login')
+      router.push('/auth/login?redirect=/dashboard')
+    }
+  }, [isAuthenticated, isLoading, router])
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render dashboard if not authenticated
+  if (!isAuthenticated) {
+    return null
+  }
 
   const renderStars = (rating: number) => {
     return (
@@ -97,17 +126,8 @@ export default function LandlordDashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Main Header - for profile, theme, and logout */}
-      <Header 
-        isAuthenticated={true} 
-        userInfo={{
-          name: "Landlord User",
-          email: "landlord@example.com",
-          avatar: "/placeholder.svg",
-          initials: "LU"
-        }}
-        hideNavigation={true}
-      />
-      
+      <Header hideNavigation={true} />
+
       <div className="flex">
         {/* Mobile Sidebar Overlay */}
         {sidebarOpen && (
@@ -116,9 +136,8 @@ export default function LandlordDashboard() {
 
         {/* Sidebar */}
         <div
-          className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0 transition-transform duration-200 ease-in-out`}
+          className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            } lg:translate-x-0 transition-transform duration-200 ease-in-out`}
         >
           <div className="p-6">
             <div className="flex items-center justify-between mb-8">
@@ -146,11 +165,10 @@ export default function LandlordDashboard() {
                   setActiveTab("overview")
                   setSidebarOpen(false)
                 }}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                  activeTab === "overview"
-                    ? "bg-orange-500 text-white"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${activeTab === "overview"
+                  ? "bg-orange-500 text-white"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
               >
                 <TrendingUp className="h-5 w-5" />
                 <span>Overview</span>
@@ -161,11 +179,10 @@ export default function LandlordDashboard() {
                   setActiveTab("listings")
                   setSidebarOpen(false)
                 }}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                  activeTab === "listings"
-                    ? "bg-orange-500 text-white"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${activeTab === "listings"
+                  ? "bg-orange-500 text-white"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
               >
                 <Search className="h-5 w-5" />
                 <span>My Listings</span>
@@ -176,11 +193,10 @@ export default function LandlordDashboard() {
                   setActiveTab("reviews")
                   setSidebarOpen(false)
                 }}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                  activeTab === "reviews"
-                    ? "bg-orange-500 text-white"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${activeTab === "reviews"
+                  ? "bg-orange-500 text-white"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
               >
                 <Star className="h-5 w-5" />
                 <span>Reviews</span>
@@ -201,11 +217,10 @@ export default function LandlordDashboard() {
                   setActiveTab("messages")
                   setSidebarOpen(false)
                 }}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                  activeTab === "messages"
-                    ? "bg-orange-500 text-white"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${activeTab === "messages"
+                  ? "bg-orange-500 text-white"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
               >
                 <MessageSquare className="h-5 w-5" />
                 <span>Messages</span>
@@ -248,18 +263,18 @@ export default function LandlordDashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   {mockStats.map((stat, index) => {
                     const Icon = stat.icon
-                    return (                        <Card key={index} className="rounded-xl shadow-sm">
-                          <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm text-muted-foreground">{stat.title}</p>
-                                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                                <p className="text-sm text-green-600 dark:text-green-400">{stat.change}</p>
-                              </div>
-                            <Icon className="h-8 w-8 text-orange-600" />
+                    return (<Card key={index} className="rounded-xl shadow-sm">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-muted-foreground">{stat.title}</p>
+                            <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                            <p className="text-sm text-green-600 dark:text-green-400">{stat.change}</p>
                           </div>
-                        </CardContent>
-                      </Card>
+                          <Icon className="h-8 w-8 text-orange-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
                     )
                   })}
                 </div>

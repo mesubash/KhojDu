@@ -102,12 +102,7 @@ export default function MessagesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header isAuthenticated={true} userInfo={{
-        name: "User",
-        email: "user@example.com",
-        avatar: "/placeholder.svg",
-        initials: "U"
-      }} />
+      <Header />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
