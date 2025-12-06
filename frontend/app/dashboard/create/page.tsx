@@ -10,10 +10,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Header } from "@/components/header"
 import { Home, ArrowLeft, Upload, MapPin, X, Wifi, Car, Droplets, Zap, Shield, Tv, Check } from "lucide-react"
 import Link from "next/link"
 import { GoogleMaps } from "@/components/google-maps"
+import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 
 const amenityOptions = [
   { id: "wifi", label: "Wi-Fi", icon: Wifi },
@@ -43,6 +45,15 @@ const kathmanduAreas = [
 ]
 
 export default function CreateListingPage() {
+  const { isAuthenticated, user } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/auth/login?redirect=/dashboard/create")
+    }
+  }, [isAuthenticated, router])
+
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([])
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [dragActive, setDragActive] = useState(false)
@@ -117,24 +128,26 @@ export default function CreateListingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex">
+      {/* Sidebar placeholder spacing to align with landlord dashboard */}
+      <div className="hidden lg:block w-64" />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="mb-6 sm:mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Link href="/dashboard" className="flex items-center space-x-2 text-orange-500 hover:text-orange-600">
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back to Dashboard</span>
-            </Link>
+      <div className="flex-1">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="mb-6 sm:mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Link href="/dashboard/landlord" className="flex items-center space-x-2 text-orange-500 hover:text-orange-600">
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to Dashboard</span>
+              </Link>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Create New Listing</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Add your property details to attract potential tenants</p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Create New Listing</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Add your property details to attract potential tenants</p>
-        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
-          {/* Basic Information */}
-          <Card className="rounded-xl border-border">
+          <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+            {/* Basic Information */}
+            <Card className="rounded-xl border-border shadow-md">
             <CardHeader>
               <CardTitle className="text-lg sm:text-xl text-foreground">Basic Information</CardTitle>
               <p className="text-sm sm:text-base text-muted-foreground">Provide essential details about your property</p>

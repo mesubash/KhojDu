@@ -246,7 +246,7 @@ export default function ListingDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="page-shell">
       <Header />
       
       {/* Back to Search Navigation */}

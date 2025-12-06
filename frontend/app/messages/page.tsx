@@ -101,7 +101,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="page-shell">
       <Header />
 
       <div className="max-w-7xl mx-auto px-4 py-8">

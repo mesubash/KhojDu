@@ -69,7 +69,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="page-shell flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
@@ -82,7 +82,7 @@ export default function ResetPasswordPage() {
           </Link>
           
           <div className="flex items-center justify-center mb-2">
-            <Logo type="banner" size="md" showText showTagline />
+            <Logo type="banner" size="md" />
           </div>
           
           <p className="text-muted-foreground">Create your new password</p>

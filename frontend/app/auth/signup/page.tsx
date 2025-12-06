@@ -21,7 +21,7 @@ import { getDashboardRouteForRole } from "@/lib/utils"
 
 export default function SignupPage() {
   const router = useRouter()
-  const { register, isLoading, error, clearError } = useAuth()
+  const { register, isLoading, error, clearError, isAuthenticated, user } = useAuth()
 
   const [role, setRole] = useState<"tenant" | "landlord">("tenant")
   const [showPassword, setShowPassword] = useState(false)
@@ -34,6 +34,14 @@ export default function SignupPage() {
     password: "",
     confirmPassword: "",
   })
+
+  // If already authenticated, send to the role dashboard instead of showing signup
+  useEffect(() => {
+    if (isAuthenticated) {
+      const target = getDashboardRouteForRole(user?.role)
+      router.replace(target)
+    }
+  }, [isAuthenticated, user?.role, router])
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -118,7 +126,7 @@ export default function SignupPage() {
           </Link>
 
           <div className="flex items-center justify-center mb-4">
-            <Logo type="banner" size="md" showText showTagline />
+            <Logo type="banner" size="md" />
           </div>
           <h1 className="text-3xl font-bold text-gradient mb-2">Create Account</h1>
           <p className="text-muted-foreground">Join KhojDu and find your perfect place</p>

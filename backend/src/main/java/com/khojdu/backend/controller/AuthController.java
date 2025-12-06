@@ -93,7 +93,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    @PreAuthorize("hasRole('USER') or hasRole('LANDLORD') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "User logout", description = "Logout user and invalidate tokens")
     public ResponseEntity<ApiResponse<SuccessResponse>> logout(
             @RequestHeader("Authorization") String authHeader,
@@ -128,7 +128,7 @@ public class AuthController {
     }
 
     @PostMapping("/change-password")
-    @PreAuthorize("hasRole('USER') or hasRole('LANDLORD') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Change password", description = "Change user password")
     public ResponseEntity<ApiResponse<SuccessResponse>> changePassword(
             @Valid @RequestBody PasswordChangeRequest request,

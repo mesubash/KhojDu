@@ -19,7 +19,7 @@ import { getDashboardRouteForRole } from "@/lib/utils"
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { login, isLoading, error, clearError, isAuthenticated } = useAuth()
+  const { login, isLoading, error, clearError, isAuthenticated, user } = useAuth()
 
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
@@ -32,6 +32,14 @@ export default function LoginPage() {
     phone: "",
     password: "",
   })
+
+  // If already authenticated, bounce to the correct dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      const target = getDashboardRouteForRole(user?.role)
+      router.replace(target)
+    }
+  }, [isAuthenticated, user?.role, router])
 
   // ✅ Don't auto-redirect here - let middleware handle it
   // The handleSubmit function already handles post-login redirect
@@ -97,7 +105,7 @@ export default function LoginPage() {
           </Link>
 
           <div className="flex items-center justify-center mb-4">
-            <Logo type="banner" size="md" showText showTagline />
+            <Logo type="banner" size="md" />
           </div>
           <h1 className="text-3xl font-bold text-gradient mb-2">Welcome Back</h1>
           <p className="text-muted-foreground">Sign in to continue your journey</p>

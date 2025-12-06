@@ -23,7 +23,7 @@ export default function DashboardRedirect() {
   }, [isAuthenticated, isLoading, router, user])
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex flex-col">
       <Header hideNavigation />
       <div className="flex flex-1 items-center justify-center p-8">
         <div className="text-center space-y-2">

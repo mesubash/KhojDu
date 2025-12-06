@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/context/AuthContext"
+import { UserRole } from "@/types/auth"
 // import { useTranslation } from "@/lib/i18n"x
 import { Menu, X, MessageSquare, User, LogOut, Settings } from "lucide-react"
 import { useState } from "react"
@@ -46,23 +47,44 @@ export function Header({ hideNavigation = false }: HeaderProps) {
       : user.email.charAt(0).toUpperCase()
   } : undefined
 
-  const navigation = [
-    { name: "Home", href: "/" },
-    { name: "Search", href: "/search" },
-    { name: "How it Works", href: "/how-it-works" },
-    { name: "About", href: "/about" },
-    { name: "Contact", href: "/contact" },
-  ]
+  const navigation = isAuthenticated
+    ? [
+        {
+          name: "Dashboard",
+          href:
+            user?.role === UserRole.ADMIN
+              ? "/admin"
+              : user?.role === UserRole.LANDLORD
+                ? "/dashboard/landlord"
+                : "/dashboard/tenant",
+        },
+        { name: "Search", href: "/search" },
+        { name: "Profile", href: "/profile" },
+      ]
+    : [
+        { name: "Home", href: "/" },
+        { name: "Search", href: "/search" },
+        { name: "How it Works", href: "/how-it-works" },
+        { name: "About", href: "/about" },
+        { name: "Contact", href: "/contact" },
+      ]
 
   const isActiveRoute = (href: string) => {
     if (href === "/") {
       return pathname === "/"
     }
+    // Treat dashboard links as active if the current path is under them
+    if (href.startsWith("/dashboard")) {
+      return pathname === href || pathname.startsWith("/dashboard")
+    }
+    if (href === "/admin") {
+      return pathname === "/admin" || pathname.startsWith("/admin")
+    }
     return pathname.startsWith(href)
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-gradient-to-r from-orange-50/80 via-background/90 to-teal-50/80 dark:from-gray-900/80 dark:via-gray-900/90 dark:to-gray-800/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container-responsive">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center -ml-4">

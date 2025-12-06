@@ -11,6 +11,7 @@ import { Header } from "@/components/header"
 import { useAuth } from "@/context/AuthContext"
 import { UserRole } from "@/types/auth"
 import { getDashboardRouteForRole } from "@/lib/utils"
+import { fetchAdminDashboard } from "@/services/dashboardService"
 import {
   Search,
   Users,
@@ -109,6 +110,9 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview")
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
+  const [stats, setStats] = useState<Record<string, any> | null>(null)
+  const [isFetching, setIsFetching] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   useEffect(() => {
     if (isLoading) return
@@ -122,6 +126,21 @@ export default function AdminDashboard() {
       router.replace(getDashboardRouteForRole(user.role))
     }
   }, [isAuthenticated, isLoading, router, user])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    setIsFetching(true)
+    fetchAdminDashboard()
+      .then((data) => {
+        setStats(data || null)
+        setFetchError(null)
+      })
+      .catch((err) => {
+        console.error("[AdminDashboard] Failed to load stats", err)
+        setFetchError("Could not load admin stats right now.")
+      })
+      .finally(() => setIsFetching(false))
+  }, [isAuthenticated])
 
   const filteredUsers = mockUsers.filter((user) => {
     const matchesSearch =
@@ -141,7 +160,7 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="page-shell flex items-center justify-center">
         <div className="text-center">
           <div className="h-12 w-12 rounded-full border-2 border-orange-500 border-t-transparent animate-spin mx-auto mb-4" />
           <p className="text-muted-foreground">Checking admin access...</p>
@@ -155,50 +174,63 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
       <Header />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Navigation Tabs */}
-        <div className="mb-8">
-          <div className="flex flex-wrap gap-4">
-            {[
-              { id: "overview", label: "Overview" },
-              { id: "users", label: "Users" },
-              { id: "listings", label: "Listings" },
-              { id: "reports", label: "Reports" },
-            ].map((tab) => (
-              <Button
-                key={tab.id}
-                variant={activeTab === tab.id ? "default" : "outline"}
-                onClick={() => setActiveTab(tab.id)}
-                className={`text-sm ${activeTab === tab.id ? "bg-orange-500 hover:bg-orange-600 text-white" : ""}`}
-              >
-                {tab.label}
-              </Button>
-            ))}
+
+      <div className="container-responsive py-10 space-y-8">
+        {/* Page Intro */}
+        <div className="bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-orange-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="text-sm text-orange-500 font-medium">Admin Control</p>
+              <h1 className="text-3xl font-bold text-foreground">Platform Dashboard</h1>
+              <p className="text-muted-foreground">Monitor users, listings, and reports in one place.</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {[
+                { id: "overview", label: "Overview" },
+                { id: "users", label: "Users" },
+                { id: "listings", label: "Listings" },
+                { id: "reports", label: "Reports" },
+              ].map((tab) => (
+                <Button
+                  key={tab.id}
+                  variant={activeTab === tab.id ? "default" : "outline"}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={activeTab === tab.id ? "bg-orange-500 hover:bg-orange-600 text-white" : ""}
+                >
+                  {tab.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Overview Tab */}
-        {activeTab === "overview" && (
-          <div className="space-y-8">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {mockStats.map((stat, index) => {
-                const Icon = stat.icon
-                return (
-                  <Card key={index} className="rounded-xl shadow-sm">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">{stat.title}</p>
-                          <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                          <p className="text-sm text-green-600 dark:text-green-400">{stat.change} from last month</p>
-                        </div>
-                        <Icon className={`h-8 w-8 ${stat.color}`} />
-                      </div>
-                    </CardContent>
+            {/* Overview Tab */}
+            {activeTab === "overview" && (
+              <div className="space-y-8">
+                {fetchError && (
+                  <div className="text-sm text-red-600">{fetchError}</div>
+                )}
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {mockStats.map((stat, index) => {
+                    const Icon = stat.icon
+                    const dynamicValue =
+                      stats && (stats[stat.title] || stats[stat.title.toLowerCase()] || stats[stat.title.replace(/\s/g, "")])
+                    return (
+                      <Card key={index} className="rounded-xl shadow-sm">
+                        <CardContent className="p-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm text-muted-foreground">{stat.title}</p>
+                              <p className="text-2xl font-bold text-foreground">{dynamicValue || stat.value}</p>
+                              <p className="text-sm text-green-600 dark:text-green-400">{stat.change} from last month</p>
+                            </div>
+                            <Icon className={`h-8 w-8 ${stat.color}`} />
+                          </div>
+                        </CardContent>
                   </Card>
                 )
               })}

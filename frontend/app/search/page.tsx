@@ -113,7 +113,7 @@ export default function SearchPage() {
   })
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="page-shell">
       <Header />
       
       <div className="container-responsive py-6 sm:py-8">

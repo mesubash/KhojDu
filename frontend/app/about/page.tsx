@@ -47,7 +47,7 @@ const values = [
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="page-shell">
       <Header />
 
       {/* Hero Section */}

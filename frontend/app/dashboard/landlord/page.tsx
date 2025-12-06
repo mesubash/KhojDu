@@ -6,12 +6,29 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, Plus, MessageSquare, LogOut, Edit, Trash2, Eye, MapPin, Menu, X, Star, TrendingUp } from "lucide-react"
-import { Header } from "@/components/header"
+import {
+  Search,
+  Plus,
+  MessageSquare,
+  Edit,
+  Trash2,
+  Eye,
+  MapPin,
+  Menu,
+  X,
+  Star,
+  TrendingUp,
+  Home,
+  BarChart3,
+  ClipboardList,
+  LogOut,
+  User,
+} from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/context/AuthContext"
 import { UserRole } from "@/types/auth"
 import { getDashboardRouteForRole } from "@/lib/utils"
+import { fetchLandlordProperties, LandlordProperty } from "@/services/dashboardService"
 
 const mockListings = [
   {
@@ -89,6 +106,9 @@ export default function LandlordDashboard() {
   const { user, isAuthenticated, isLoading } = useAuth()
   const [activeTab, setActiveTab] = useState("overview")
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [properties, setProperties] = useState<LandlordProperty[]>([])
+  const [isFetching, setIsFetching] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   // Protect the dashboard - redirect if not authenticated
   useEffect(() => {
@@ -106,10 +126,25 @@ export default function LandlordDashboard() {
     }
   }, [isAuthenticated, isLoading, router, user])
 
+  useEffect(() => {
+    if (!isAuthenticated) return
+    setIsFetching(true)
+    fetchLandlordProperties({ page: 0, size: 20 })
+      .then((resp) => {
+        setProperties(resp?.content || [])
+        setFetchError(null)
+      })
+      .catch((err) => {
+        console.error("[LandlordDashboard] Failed to load properties", err)
+        setFetchError("Could not load your listings right now.")
+      })
+      .finally(() => setIsFetching(false))
+  }, [isAuthenticated])
+
   // Show loading state while checking authentication
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="page-shell flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading...</p>
@@ -134,9 +169,31 @@ export default function LandlordDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Main Header - for profile, theme, and logout */}
-      <Header hideNavigation={true} />
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+      {/* Intro banner */}
+      <div className="container-responsive py-6 lg:py-8">
+        <div className="bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-orange-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <p className="text-sm text-orange-500 font-medium">Landlord Space</p>
+              <h1 className="text-3xl font-bold text-foreground">Manage your listings effortlessly</h1>
+              <p className="text-muted-foreground">Track performance, respond to tenants, and keep your properties updated.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/dashboard/create">
+                <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white">
+                  <Plus className="h-4 w-4 mr-2" /> Add listing
+                </Button>
+              </Link>
+              <Link href="/messages">
+                <Button variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50">
+                  <MessageSquare className="h-4 w-4 mr-2" /> Messages
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="flex">
         {/* Mobile Sidebar Overlay */}
@@ -146,24 +203,24 @@ export default function LandlordDashboard() {
 
         {/* Sidebar */}
         <div
-          className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
-            } lg:translate-x-0 transition-transform duration-200 ease-in-out`}
+          className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white/90 dark:bg-gray-900/80 border-r border-orange-100/60 dark:border-gray-800/60 backdrop-blur-xl transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            } lg:translate-x-0 transition-transform duration-200 ease-in-out shadow-xl`}
         >
           <div className="p-6">
             <div className="flex items-center justify-between mb-8">
-              <Link href="/" className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center">
-                  <Search className="h-4 w-4 text-white" />
+              <div className="flex items-center space-x-2">
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center">
+                  <Home className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xl text-orange-500" style={{ fontFamily: 'var(--font-nothing-you-could-do)' }}>
                     KhojDu
                   </span>
                   <span className="text-xs text-foreground font-bold tracking-wider" style={{ fontFamily: 'var(--font-delius)' }}>
-                    DASHBOARD
+                    LANDLORD
                   </span>
                 </div>
-              </Link>
+              </div>
               <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)} className="lg:hidden">
                 <X className="h-5 w-5" />
               </Button>
@@ -175,9 +232,9 @@ export default function LandlordDashboard() {
                   setActiveTab("overview")
                   setSidebarOpen(false)
                 }}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${activeTab === "overview"
-                  ? "bg-orange-500 text-white"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-colors ${activeTab === "overview"
+                  ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md"
+                  : "text-muted-foreground hover:bg-orange-50 dark:hover:bg-gray-800 hover:text-foreground"
                   }`}
               >
                 <TrendingUp className="h-5 w-5" />
@@ -189,12 +246,12 @@ export default function LandlordDashboard() {
                   setActiveTab("listings")
                   setSidebarOpen(false)
                 }}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${activeTab === "listings"
-                  ? "bg-orange-500 text-white"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-colors ${activeTab === "listings"
+                  ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md"
+                  : "text-muted-foreground hover:bg-orange-50 dark:hover:bg-gray-800 hover:text-foreground"
                   }`}
               >
-                <Search className="h-5 w-5" />
+                <ClipboardList className="h-5 w-5" />
                 <span>My Listings</span>
               </button>
 
@@ -203,9 +260,9 @@ export default function LandlordDashboard() {
                   setActiveTab("reviews")
                   setSidebarOpen(false)
                 }}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${activeTab === "reviews"
-                  ? "bg-orange-500 text-white"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-colors ${activeTab === "reviews"
+                  ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md"
+                  : "text-muted-foreground hover:bg-orange-50 dark:hover:bg-gray-800 hover:text-foreground"
                   }`}
               >
                 <Star className="h-5 w-5" />
@@ -227,9 +284,9 @@ export default function LandlordDashboard() {
                   setActiveTab("messages")
                   setSidebarOpen(false)
                 }}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${activeTab === "messages"
-                  ? "bg-orange-500 text-white"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-colors ${activeTab === "messages"
+                  ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md"
+                  : "text-muted-foreground hover:bg-orange-50 dark:hover:bg-gray-800 hover:text-foreground"
                   }`}
               >
                 <MessageSquare className="h-5 w-5" />
@@ -237,6 +294,17 @@ export default function LandlordDashboard() {
                 <Badge variant="secondary" className="ml-auto bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-400 text-xs">
                   5
                 </Badge>
+              </button>
+
+              <button
+                onClick={() => {
+                  router.push("/profile")
+                  setSidebarOpen(false)
+                }}
+                className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-colors text-muted-foreground hover:bg-orange-50 dark:hover:bg-gray-800 hover:text-foreground"
+              >
+                <User className="h-5 w-5" />
+                <span>Profile</span>
               </button>
 
               <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
@@ -289,58 +357,78 @@ export default function LandlordDashboard() {
                   })}
                 </div>
 
-                {/* Recent Activity */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <Card className="rounded-xl shadow-sm">
+                {/* Quick snapshot */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <Card className="rounded-2xl border-orange-100/60 dark:border-gray-800/60 shadow-sm">
                     <CardHeader>
-                      <CardTitle className="text-xl">Recent Reviews</CardTitle>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5 text-orange-500" /> Performance
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {mockReviews.slice(0, 3).map((review) => (
-                          <div key={review.id} className="flex items-start space-x-3">
-                            <Avatar className="w-8 h-8">
-                              <AvatarImage src={review.tenant.avatar || "/placeholder.svg"} alt={review.tenant.name} />
-                              <AvatarFallback className="text-xs">{review.tenant.initials}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2 mb-1">
-                                {renderStars(review.rating)}
-                                <span className="text-sm font-medium text-foreground">{review.tenant.name}</span>
-                              </div>
-                              <p className="text-xs text-muted-foreground mb-1">{review.propertyTitle}</p>
-                              <p className="text-sm text-foreground line-clamp-2">{review.review}</p>
-                            </div>
-                          </div>
-                        ))}
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-sm">Views this month</span>
+                        <span className="text-lg font-semibold text-foreground">+432</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-sm">Avg. rating</span>
+                        <span className="flex items-center gap-1 font-semibold text-foreground">
+                          4.6 <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-sm">Responses</span>
+                        <span className="text-lg font-semibold text-foreground">92%</span>
                       </div>
                     </CardContent>
                   </Card>
-
-                  <Card className="rounded-xl shadow-sm">
+                  <Card className="rounded-2xl border-orange-100/60 dark:border-gray-800/60 shadow-sm">
                     <CardHeader>
-                      <CardTitle className="text-xl">Property Performance</CardTitle>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Home className="h-5 w-5 text-orange-500" /> Active listings
+                      </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {mockListings.map((listing) => (
-                          <div key={listing.id} className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">{listing.title}</p>
-                              <div className="flex items-center space-x-2 mt-1">
-                                {renderStars(listing.rating)}
-                                <span className="text-xs text-muted-foreground">
-                                  {listing.rating} ({listing.totalReviews} reviews)
-                                </span>
-                              </div>
+                    <CardContent className="space-y-3">
+                      {(properties.length ? properties : mockListings).slice(0, 3).map((listing) => (
+                        <div key={listing.id} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-9 h-9 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center text-sm font-semibold">
+                              {listing.title.slice(0, 1)}
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm font-medium text-green-600">{listing.occupancyRate}% occupied</p>
-                              <p className="text-xs text-muted-foreground">{listing.views} views</p>
+                            <div>
+                              <p className="font-medium text-sm text-foreground truncate max-w-[160px]">{listing.title}</p>
+                              <p className="text-xs text-muted-foreground">{listing.location}</p>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                          <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            {listing.status || "Active"}
+                          </Badge>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                  <Card className="rounded-2xl border-orange-100/60 dark:border-gray-800/60 shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <MessageSquare className="h-5 w-5 text-orange-500" /> Recent reviews
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {mockReviews.slice(0, 2).map((review) => (
+                        <div key={review.id} className="flex items-start gap-3">
+                          <Avatar className="w-9 h-9">
+                            <AvatarImage src={review.tenant.avatar || "/placeholder.svg"} alt={review.tenant.name} />
+                            <AvatarFallback className="text-xs">{review.tenant.initials}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              {renderStars(review.rating)}
+                              <span className="text-xs text-muted-foreground">{review.propertyTitle}</span>
+                            </div>
+                            <p className="text-sm text-foreground line-clamp-2">{review.review}</p>
+                          </div>
+                        </div>
+                      ))}
                     </CardContent>
                   </Card>
                 </div>
@@ -363,13 +451,17 @@ export default function LandlordDashboard() {
                   </Link>
                 </div>
 
+                {fetchError && (
+                  <div className="text-sm text-red-600 mb-4">{fetchError}</div>
+                )}
+
                 <div className="grid gap-6">
-                  {mockListings.map((listing) => (
+                  {(isFetching ? [] : properties).map((listing) => (
                     <Card key={listing.id} className="rounded-xl shadow-sm hover:shadow-md transition-shadow bg-card">
                       <CardContent className="p-6">
                         <div className="flex flex-col lg:flex-row gap-6">
                           <img
-                            src={listing.image || "/placeholder.svg"}
+                            src={"/placeholder.svg"}
                             alt={listing.title}
                             className="w-full lg:w-48 h-32 object-cover rounded-lg"
                           />
@@ -392,9 +484,9 @@ export default function LandlordDashboard() {
                                 </div>
                                 {/* Rating and Reviews */}
                                 <div className="flex items-center space-x-2 mt-2">
-                                  {renderStars(listing.rating)}
-                                  <span className="text-sm font-medium text-foreground">{listing.rating}</span>
-                                  <span className="text-sm text-muted-foreground">({listing.totalReviews} reviews)</span>
+                                  {renderStars(listing.rating || 0)}
+                                  <span className="text-sm font-medium text-foreground">{listing.rating || "N/A"}</span>
+                                  <span className="text-sm text-muted-foreground">({listing.totalReviews || 0} reviews)</span>
                                 </div>
                               </div>
                               <div className="flex space-x-2">
@@ -418,21 +510,21 @@ export default function LandlordDashboard() {
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm text-muted-foreground mb-4">
                               <div>
                                 <span className="block text-lg font-bold text-orange-600">
-                                  Rs {listing.rent.toLocaleString()}
+                                  Rs {(listing.monthlyRent || 0).toLocaleString()}
                                 </span>
                                 <span>per month</span>
                               </div>
                               <div>
                                 <span className="flex items-center">
                                   <Eye className="h-4 w-4 mr-1" />
-                                  {listing.views}
+                                  {listing.views ?? 0}
                                 </span>
                                 <span>views</span>
                               </div>
                               <div>
                                 <span className="flex items-center">
                                   <MessageSquare className="h-4 w-4 mr-1" />
-                                  {listing.messages}
+                                  {listing.messages ?? 0}
                                 </span>
                                 <span>messages</span>
                               </div>

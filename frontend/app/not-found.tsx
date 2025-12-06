@@ -9,7 +9,7 @@ import Link from "next/link"
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="page-shell">
       <Header />
       
       <div className="flex flex-col items-center justify-center min-h-[70vh] px-4 py-16">
