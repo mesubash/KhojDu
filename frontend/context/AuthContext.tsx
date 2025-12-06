@@ -19,8 +19,8 @@ import type {
 } from "@/types/auth"
 
 interface AuthContextType extends AuthState {
-  login: (credentials: LoginRequest) => Promise<void>
-  register: (userData: RegisterRequest) => Promise<void>
+  login: (credentials: LoginRequest) => Promise<User>
+  register: (userData: RegisterRequest) => Promise<User>
   logout: () => Promise<void>
   refreshAuth: () => Promise<void>
   clearError: () => void
@@ -165,6 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         })
 
         console.log('[AuthContext] ✅ Login successful')
+        return user
       } catch (error: any) {
         console.error('[Login] Error occurred:', {
           message: error.message,
@@ -224,6 +225,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         })
 
         console.log('[AuthContext] ✅ Registration successful')
+        return user
       } catch (error: any) {
         console.error('[Register] Error occurred:', {
           message: error.message,

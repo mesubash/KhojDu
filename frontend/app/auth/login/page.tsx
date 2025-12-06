@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { getDashboardRouteForRole } from "@/lib/utils"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -50,25 +51,26 @@ export default function LoginPage() {
     }
 
     try {
-      console.log('[Login Page] Attempting login with:', formData.email)
+      console.log("[Login Page] Attempting login with:", formData.email)
 
-      await login({
+      const loggedInUser = await login({
         email: formData.email,
         password: formData.password,
       })
 
-      console.log('[Login Page] Login successful, redirecting...')
+      console.log("[Login Page] Login successful, redirecting...")
 
       // ✅ Login successful - tokens are now set in memory and cookie
       toast.success("Login successful!")
 
       // Redirect using router.push for better Next.js integration
-      const redirect = searchParams.get('redirect') || '/dashboard'
-      console.log('[Login Page] Redirecting to:', redirect)
+      const requestedRedirect = searchParams.get("redirect")
+      const roleDashboard = getDashboardRouteForRole(loggedInUser?.role)
+      const redirect = requestedRedirect && requestedRedirect !== "/dashboard" ? requestedRedirect : roleDashboard
+      console.log("[Login Page] Redirecting to:", redirect)
       router.push(redirect)
-
     } catch (err: any) {
-      console.error('[Login Page] Login failed:', err)
+      console.error("[Login Page] Login failed:", err)
       // Error is already set in context, but also show toast
       const errorMessage = err?.message || error?.message || "Login failed. Please check your credentials."
       toast.error(errorMessage)

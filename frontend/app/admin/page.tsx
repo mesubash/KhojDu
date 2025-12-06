@@ -1,12 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Header } from "@/components/header"
+import { useAuth } from "@/context/AuthContext"
+import { UserRole } from "@/types/auth"
+import { getDashboardRouteForRole } from "@/lib/utils"
 import {
   Search,
   Users,
@@ -100,9 +104,24 @@ const mockListings = [
 ]
 
 export default function AdminDashboard() {
+  const router = useRouter()
+  const { user, isAuthenticated, isLoading } = useAuth()
   const [activeTab, setActiveTab] = useState("overview")
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
+
+  useEffect(() => {
+    if (isLoading) return
+
+    if (!isAuthenticated) {
+      router.replace("/auth/login?redirect=/admin")
+      return
+    }
+
+    if (user && user.role !== UserRole.ADMIN) {
+      router.replace(getDashboardRouteForRole(user.role))
+    }
+  }, [isAuthenticated, isLoading, router, user])
 
   const filteredUsers = mockUsers.filter((user) => {
     const matchesSearch =
@@ -119,6 +138,21 @@ export default function AdminDashboard() {
     const matchesStatus = filterStatus === "all" || listing.status.toLowerCase() === filterStatus
     return matchesSearch && matchesStatus
   })
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="h-12 w-12 rounded-full border-2 border-orange-500 border-t-transparent animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Checking admin access...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated || !user || user.role !== UserRole.ADMIN) {
+    return null
+  }
 
   return (
     <div className="min-h-screen bg-background">

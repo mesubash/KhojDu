@@ -17,6 +17,7 @@ import { useAuth } from "@/context/AuthContext"
 import { UserRole } from "@/types/auth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Logo } from "@/components/logo"
+import { getDashboardRouteForRole } from "@/lib/utils"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -71,7 +72,7 @@ export default function SignupPage() {
       // Map tenant/landlord to TENANT/LANDLORD role
       const userRole = role === "landlord" ? UserRole.LANDLORD : UserRole.TENANT
 
-      await register({
+      const registeredUser = await register({
         fullName: formData.fullName,
         email: formData.email,
         password: formData.password,
@@ -83,7 +84,8 @@ export default function SignupPage() {
       toast.success("Account created successfully!")
 
       // Redirect to dashboard
-      router.push("/dashboard")
+      const target = getDashboardRouteForRole(registeredUser?.role)
+      router.push(target)
     } catch (err: any) {
       // Error is already set in context, but also show toast
       const errorMessage = err?.message || error?.message || "Registration failed. Please try again."

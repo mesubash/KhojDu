@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -133,8 +134,12 @@ public class AuthServiceImpl implements AuthService {
             log.info("User logged in successfully: {}", user.getEmail());
             return new JwtResponse(accessToken, refreshToken, userInfo);
 
+        } catch (AuthenticationException ae) {
+            // Expected authentication failures (bad credentials, locked/disabled user) shouldn't dump a full stack trace
+            log.warn("Invalid login attempt for user: {}", request.getEmail());
+            throw new UnauthorizedException("Invalid email or password", ae);
         } catch (Exception e) {
-            log.error("Login failed for user: {}", request.getEmail(), e);
+            log.error("Unexpected login failure for user: {}", request.getEmail(), e);
             throw new UnauthorizedException("Invalid email or password");
         }
     }
@@ -322,4 +327,3 @@ public class AuthServiceImpl implements AuthService {
         log.info("Verification email resent to: {}", email);
     }
 }
-
