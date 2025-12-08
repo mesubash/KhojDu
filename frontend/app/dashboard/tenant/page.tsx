@@ -15,6 +15,7 @@ import { fetchTenantInquiries, fetchWishlist, InquiryItem, WishlistItem } from "
 import { searchProperties } from "@/services/propertyService"
 import type { PropertyListItem } from "@/types/property"
 import { toast } from "sonner"
+import { fetchTenantDashboard } from "@/services/tenantService"
 
 export default function TenantDashboard() {
   const router = useRouter()
@@ -23,6 +24,8 @@ export default function TenantDashboard() {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([])
   const [inquiries, setInquiries] = useState<InquiryItem[]>([])
   const [recommended, setRecommended] = useState<PropertyListItem[]>([])
+  const [wishlistCount, setWishlistCount] = useState(0)
+  const [inquiryCount, setInquiryCount] = useState(0)
   const [isFetching, setIsFetching] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
@@ -43,13 +46,21 @@ export default function TenantDashboard() {
     if (!isAuthenticated || !user || user.role !== UserRole.TENANT) return
     setIsFetching(true)
     Promise.all([
-      fetchWishlist({ page: 0, size: 10 }),
-      fetchTenantInquiries({ page: 0, size: 10 }),
+      fetchWishlist({ page: 0, size: 5 }),
+      fetchTenantInquiries({ page: 0, size: 5 }),
+      fetchTenantDashboard(),
       searchProperties({ page: 0, size: 6, sortBy: "createdAt", sortDirection: "DESC" }),
     ])
-      .then(([wishlistResp, inquiriesResp, recommendedResp]) => {
+      .then(([wishlistResp, inquiriesResp, dashboardResp, recommendedResp]) => {
         setWishlist(wishlistResp?.content || [])
         setInquiries(inquiriesResp?.content || [])
+        setWishlistCount(dashboardResp?.wishlistCount ?? (wishlistResp?.totalElements ?? wishlistResp?.content?.length ?? 0))
+        setInquiryCount(dashboardResp?.inquiryCount ?? (inquiriesResp?.totalElements ?? inquiriesResp?.content?.length ?? 0))
+        if (dashboardResp?.recentWishlist?.length) {
+          setRecommended(dashboardResp.recentWishlist as PropertyListItem[])
+        } else {
+          setRecommended(recommendedResp?.content || [])
+        }
         setRecommended(recommendedResp?.content || [])
         setFetchError(null)
       })
@@ -128,7 +139,7 @@ export default function TenantDashboard() {
                   <CardContent className="p-5 flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Saved homes</p>
-                      <p className="text-2xl font-bold text-foreground">{wishlist.length}</p>
+                      <p className="text-2xl font-bold text-foreground">{wishlistCount || wishlist.length}</p>
                     </div>
                     <Home className="h-8 w-8 text-orange-500" />
                   </CardContent>
@@ -137,7 +148,7 @@ export default function TenantDashboard() {
                   <CardContent className="p-5 flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Upcoming visits</p>
-                      <p className="text-2xl font-bold text-foreground">{inquiries.length}</p>
+                      <p className="text-2xl font-bold text-foreground">{inquiryCount || inquiries.length}</p>
                     </div>
                     <Calendar className="h-8 w-8 text-blue-500" />
                   </CardContent>
