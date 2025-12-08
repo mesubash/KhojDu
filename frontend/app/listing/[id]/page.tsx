@@ -37,10 +37,13 @@ import type { PropertyDetail } from "@/types/property"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import type { ReviewSummary, Review } from "@/types/review"
+import { useAuth } from "@/context/AuthContext"
+import { addToWishlist, removeFromWishlist, checkWishlist } from "@/services/wishlistService"
 
 export default function ListingDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { isAuthenticated } = useAuth()
   const propertyId = Array.isArray(params?.id) ? params.id[0] : params?.id
   const [property, setProperty] = useState<PropertyDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -50,6 +53,8 @@ export default function ListingDetailPage() {
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [message, setMessage] = useState("")
   const [isLiked, setIsLiked] = useState(false)
+  const [isInWishlist, setIsInWishlist] = useState(false)
+  const [wishlistLoading, setWishlistLoading] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [reviewForm, setReviewForm] = useState({
     rating: 0,
@@ -209,6 +214,48 @@ export default function ListingDetailPage() {
       label: a.name,
       icon: getAmenityIcon(a.name),
     })) || []
+  const loadWishlistStatus = useCallback(async () => {
+    if (!propertyId || !isAuthenticated) return
+    try {
+      const inList = await checkWishlist(propertyId)
+      setIsInWishlist(Boolean(inList))
+      setIsLiked(Boolean(inList))
+    } catch (err) {
+      console.warn("[Listing] Failed to check wishlist", err)
+    }
+  }, [isAuthenticated, propertyId])
+
+  useEffect(() => {
+    loadWishlistStatus()
+  }, [loadWishlistStatus])
+
+  const toggleWishlist = async () => {
+    if (!isAuthenticated) {
+      toast.error("Please log in to save listings.")
+      router.push("/auth/login?redirect=/listing/" + propertyId)
+      return
+    }
+    if (!propertyId) return
+    setWishlistLoading(true)
+    try {
+      if (isInWishlist) {
+        await removeFromWishlist(propertyId)
+        setIsInWishlist(false)
+        setIsLiked(false)
+        toast.success("Removed from wishlist")
+      } else {
+        await addToWishlist(propertyId)
+        setIsInWishlist(true)
+        setIsLiked(true)
+        toast.success("Saved to wishlist")
+      }
+    } catch (err) {
+      console.error("[Listing] Failed to toggle wishlist", err)
+      toast.error("Could not update wishlist.")
+    } finally {
+      setWishlistLoading(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -283,10 +330,11 @@ export default function ListingDetailPage() {
                 {/* Action Buttons */}
                 <div className="absolute top-4 right-4 flex space-x-2">
                   <button
-                    onClick={() => setIsLiked(!isLiked)}
-                    className="bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 rounded-full p-2 shadow-lg transition-all"
+                    onClick={toggleWishlist}
+                    disabled={wishlistLoading}
+                    className="bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 rounded-full p-2 shadow-lg transition-all disabled:opacity-60"
                   >
-                    <Heart className={`h-5 w-5 ${isLiked ? "text-red-500 fill-current" : "text-muted-foreground"}`} />
+                    <Heart className={`h-5 w-5 ${isLiked || isInWishlist ? "text-red-500 fill-current" : "text-muted-foreground"}`} />
                   </button>
                   <button className="bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 rounded-full p-2 shadow-lg transition-all">
                     <Share2 className="h-5 w-5 text-muted-foreground" />
