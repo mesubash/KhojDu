@@ -1,5 +1,6 @@
 import axiosInstance from "@/lib/axios"
 import type { ApiResponse } from "@/types/auth"
+import { getCached, setCached, invalidate } from "@/lib/requestCache"
 
 // Shared pagination structure matching backend ApiResponse<PagedResponse<T>>
 interface PagedResponse<T> {
@@ -40,9 +41,13 @@ export interface LandlordProperty {
 
 export async function fetchLandlordProperties(params: { page?: number; size?: number } = {}) {
   const { page = 0, size = 10 } = params
+  const cacheKey = `landlord-props-${page}-${size}`
+  const cached = getCached<PagedResponse<LandlordProperty>>(cacheKey)
+  if (cached) return cached
   const { data } = await axiosInstance.get<ApiResponse<PagedResponse<LandlordProperty>>>(
     `/properties/landlord/my-properties?page=${page}&size=${size}`
   )
+  setCached(cacheKey, data.data, 30_000)
   return data.data
 }
 
@@ -57,9 +62,13 @@ export interface WishlistItem {
 
 export async function fetchWishlist(params: { page?: number; size?: number } = {}) {
   const { page = 0, size = 10 } = params
+  const cacheKey = `wishlist-${page}-${size}`
+  const cached = getCached<PagedResponse<WishlistItem>>(cacheKey)
+  if (cached) return cached
   const { data } = await axiosInstance.get<ApiResponse<PagedResponse<WishlistItem>>>(
     `/wishlist?page=${page}&size=${size}`
   )
+  setCached(cacheKey, data.data, 30_000)
   return data.data
 }
 
@@ -74,8 +83,12 @@ export interface InquiryItem {
 
 export async function fetchTenantInquiries(params: { page?: number; size?: number } = {}) {
   const { page = 0, size = 10 } = params
+  const cacheKey = `tenant-inquiries-${page}-${size}`
+  const cached = getCached<PagedResponse<InquiryItem>>(cacheKey)
+  if (cached) return cached
   const { data } = await axiosInstance.get<ApiResponse<PagedResponse<InquiryItem>>>(
     `/inquiries/tenant?page=${page}&size=${size}`
   )
+  setCached(cacheKey, data.data, 30_000)
   return data.data
 }

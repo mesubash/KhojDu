@@ -9,6 +9,7 @@ import type {
 } from "@/types/property"
 import type { Review, ReviewSummary } from "@/types/review"
 import type { Amenity } from "@/types/property"
+import { getCached, setCached } from "@/lib/requestCache"
 
 // Search properties using backend search endpoint
 export async function searchProperties(params: PropertySearchRequest = {}) {
@@ -21,17 +22,25 @@ export async function searchProperties(params: PropertySearchRequest = {}) {
     ...params,
   }
 
+  const cacheKey = `search-${JSON.stringify(payload)}`
+  const cached = getCached<PagedResponse<PropertyListItem>>(cacheKey)
+  if (cached) return cached
   const { data } = await axiosInstance.post<ApiResponse<PagedResponse<PropertyListItem>>>(
     "/search/properties",
     payload
   )
 
+  setCached(cacheKey, data.data, 30_000)
   return data.data
 }
 
 // Fetch list of cities that have properties
 export async function fetchCities(): Promise<string[]> {
+  const cacheKey = "search-cities"
+  const cached = getCached<string[]>(cacheKey)
+  if (cached) return cached
   const { data } = await axiosInstance.get<ApiResponse<string[]>>("/search/cities")
+  setCached(cacheKey, data.data || [], 300_000) // 5 minutes
   return data.data || []
 }
 
@@ -43,7 +52,11 @@ export async function createProperty(payload: PropertyCreatePayload) {
 
 // Get a single property detail (public)
 export async function fetchProperty(id: string): Promise<PropertyDetail> {
+  const cacheKey = `property-${id}`
+  const cached = getCached<PropertyDetail>(cacheKey)
+  if (cached) return cached
   const { data } = await axiosInstance.get<ApiResponse<PropertyDetail>>(`/properties/${id}`)
+  setCached(cacheKey, data.data, 60_000)
   return data.data
 }
 
