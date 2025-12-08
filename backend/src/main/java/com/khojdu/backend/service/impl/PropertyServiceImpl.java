@@ -49,7 +49,14 @@ public class PropertyServiceImpl implements PropertyService {
     public PropertyResponse createProperty(PropertyCreateRequest request, String landlordId) {
         log.info("Creating property for landlord: {}", landlordId);
 
-        User landlord = userRepository.findById(UUID.fromString(landlordId))
+        UUID landlordUuid;
+        try {
+            landlordUuid = UUID.fromString(landlordId);
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException("Invalid landlord identifier");
+        }
+
+        User landlord = userRepository.findById(landlordUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (!landlord.getRole().name().equals("LANDLORD") && !landlord.getRole().name().equals("ADMIN")) {
@@ -61,6 +68,22 @@ public class PropertyServiceImpl implements PropertyService {
             if (!LocationUtil.isValidNepalCoordinates(request.getLatitude(), request.getLongitude())) {
                 throw new BadRequestException("Invalid coordinates for Nepal");
             }
+        }
+        if (request.getMonthlyRent() == null) {
+            throw new BadRequestException("Monthly rent is required");
+        }
+        if (request.getTitle() == null || request.getTitle().isBlank()) {
+            throw new BadRequestException("Title is required");
+        }
+        if (request.getAddress() == null || request.getAddress().isBlank()) {
+            throw new BadRequestException("Address is required");
+        }
+        if (request.getCity() == null || request.getCity().isBlank()) {
+            throw new BadRequestException("City is required");
+        }
+        if (request.getDistrict() == null || request.getDistrict().isBlank()) {
+            // fall back to city if district is missing to avoid DB constraint issues
+            request.setDistrict(request.getCity());
         }
 
         // Create property
@@ -92,11 +115,8 @@ public class PropertyServiceImpl implements PropertyService {
         property.setIsAvailable(true);
 
         // Set status based on landlord verification
-        if (landlord.getIsVerified()) {
-            property.setStatus(PropertyStatus.APPROVED);
-        } else {
-            property.setStatus(PropertyStatus.PENDING);
-        }
+        boolean isLandlordVerified = Boolean.TRUE.equals(landlord.getIsVerified());
+        property.setStatus(isLandlordVerified ? PropertyStatus.APPROVED : PropertyStatus.PENDING);
 
         property = propertyRepository.save(property);
 
@@ -109,10 +129,19 @@ public class PropertyServiceImpl implements PropertyService {
         // Add nearby places
         if (request.getNearbyPlaces() != null) {
             for (PropertyCreateRequest.NearbyPlaceRequest nearbyPlaceReq : request.getNearbyPlaces()) {
+                if (nearbyPlaceReq.getPlaceType() == null) {
+                    log.warn("Skipping nearby place with missing type: {}", nearbyPlaceReq);
+                    continue;
+                }
                 NearbyPlace nearbyPlace = new NearbyPlace();
                 nearbyPlace.setProperty(property);
                 nearbyPlace.setName(nearbyPlaceReq.getName());
-                nearbyPlace.setPlaceType(PlaceType.valueOf(nearbyPlaceReq.getPlaceType()));
+                try {
+                    nearbyPlace.setPlaceType(PlaceType.valueOf(nearbyPlaceReq.getPlaceType()));
+                } catch (IllegalArgumentException ex) {
+                    log.warn("Invalid nearby place type {} for property {}", nearbyPlaceReq.getPlaceType(), property.getId());
+                    continue;
+                }
                 nearbyPlace.setDistanceMeters(nearbyPlaceReq.getDistanceMeters());
                 nearbyPlace.setWalkingTimeMinutes(nearbyPlaceReq.getWalkingTimeMinutes());
                 nearbyPlaceRepository.save(nearbyPlace);

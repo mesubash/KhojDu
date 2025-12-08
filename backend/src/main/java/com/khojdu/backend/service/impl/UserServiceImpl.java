@@ -28,9 +28,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserProfileResponse getUserProfile(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    public UserProfileResponse getUserProfile(String identifier) {
+        User user = resolveUser(identifier);
 
         UserProfile profile = userProfileRepository.findByUser(user).orElse(null);
 
@@ -39,11 +38,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserProfileResponse updateUserProfile(String email, UserProfileRequest request) {
-        log.info("Updating profile for user: {}", email);
+    public UserProfileResponse updateUserProfile(String identifier, UserProfileRequest request) {
+        log.info("Updating profile for user: {}", identifier);
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = resolveUser(identifier);
 
         // Update user fields
         if (request.getFullName() != null) user.setFullName(request.getFullName());
@@ -70,17 +68,16 @@ public class UserServiceImpl implements UserService {
 
         profile = userProfileRepository.save(profile);
 
-        log.info("Profile updated successfully for user: {}", email);
+        log.info("Profile updated successfully for user: {}", identifier);
         return userMapper.toUserProfileResponse(user, profile);
     }
 
     @Override
     @Transactional
-    public void deleteUserAccount(String email, String password) {
-        log.info("Deleting account for user: {}", email);
+    public void deleteUserAccount(String identifier, String password) {
+        log.info("Deleting account for user: {}", identifier);
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = resolveUser(identifier);
 
         // Verify password
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
@@ -88,6 +85,24 @@ public class UserServiceImpl implements UserService {
         }
 
         userRepository.delete(user);
-        log.info("Account deleted successfully for user: {}", email);
+        log.info("Account deleted successfully for user: {}", identifier);
+    }
+
+    private User resolveUser(String identifier) {
+        // If SecurityContext already holds the principal, reuse it to avoid repo mismatches
+        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof com.khojdu.backend.security.UserPrincipal principal) {
+            return principal.getUser();
+        }
+
+        // Principal username is UUID (UserPrincipal#getUsername), so resolve by id first
+        try {
+            return userRepository.findById(java.util.UUID.fromString(identifier))
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        } catch (IllegalArgumentException ignored) {
+            // Fallback to email lookup
+        }
+        return userRepository.findByEmail(identifier)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 }
