@@ -69,7 +69,7 @@ const getMockCoordinates = (index: number) => {
 export default function SearchPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list" | "map">("grid")
   const [searchQuery, setSearchQuery] = useState("")
-  const [priceRange, setPriceRange] = useState([1, 50000])
+  const [priceRange, setPriceRange] = useState([5000, 50000])
   const [propertyType, setPropertyType] = useState<PropertyType | "all">("all")
   const [selectedArea, setSelectedArea] = useState("all")
   const [areas, setAreas] = useState<string[]>(defaultAreas)
@@ -197,7 +197,7 @@ export default function SearchPage() {
             </a>
           </p>
 
-          <Card className="p-4 sm:p-6 rounded-xl shadow-sm">
+          <Card className="p-4 sm:p-6 rounded-xl shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <div className="space-y-4 sm:space-y-6">
               {/* Search Bar */}
               <div className="relative">
@@ -206,7 +206,7 @@ export default function SearchPage() {
                   placeholder="Search by title or location..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 sm:pl-12 h-10 sm:h-12 text-sm sm:text-lg"
+                  className="pl-10 sm:pl-12 h-10 sm:h-12 text-sm sm:text-lg bg-white/10 dark:bg-gray-900/20 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-xl placeholder:text-muted-foreground/30 placeholder:font-light transition-all focus:bg-white/80 dark:focus:bg-gray-900/70 focus:backdrop-blur-2xl focus:ring-2 focus:ring-orange-300/70 focus:border-orange-300/70"
                 />
               </div>
 
@@ -215,7 +215,7 @@ export default function SearchPage() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Property Type</label>
                   <Select value={propertyType} onValueChange={(value) => setPropertyType(value as PropertyType | "all")}>
-                    <SelectTrigger className="h-10 sm:h-12 bg-background border-border">
+                    <SelectTrigger className="h-10 sm:h-12 bg-white/10 dark:bg-gray-900/20 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-xl transition-all focus:ring-2 focus:ring-orange-300/70 focus:border-orange-300/70">
                       <SelectValue placeholder="All Types" />
                     </SelectTrigger>
                     <SelectContent>
@@ -231,7 +231,7 @@ export default function SearchPage() {
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Kathmandu Area</label>
                   <Select value={selectedArea} onValueChange={setSelectedArea}>
-                    <SelectTrigger className="h-10 sm:h-12 bg-background border-border">
+                    <SelectTrigger className="h-10 sm:h-12 bg-white/10 dark:bg-gray-900/20 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-xl transition-all focus:ring-2 focus:ring-orange-300/70 focus:border-orange-300/70">
                       <SelectValue placeholder="All Areas" />
                     </SelectTrigger>
                     <SelectContent>
@@ -249,15 +249,19 @@ export default function SearchPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Budget: Rs {priceRange[0].toLocaleString()} - Rs {priceRange[1].toLocaleString()}
                   </label>
-                  <div className="px-3 pt-2 bg-white/80 dark:bg-gray-900/70 rounded-lg border border-border">
+                    <div className="px-3 pt-3 pb-4 bg-white/10 dark:bg-gray-900/20 border border-white/15 dark:border-white/10 rounded-lg shadow-sm backdrop-blur-xl">
                     <Slider
                       value={priceRange}
                       onValueChange={setPriceRange}
                       max={50000}
-                      min={5000}
-                      step={1000}
-                      className="w-full [&>[role=slider]]:border-orange-500 [&>[role=slider]]:bg-white"
+                      min={1}
+                      step={500}
+                      className="w-full data-[orientation=horizontal]:h-3 [&>[role=slider]]:h-5 [&>[role=slider]]:w-5 [&>[role=slider]]:border-2 [&>[role=slider]]:border-orange-500 [&>[role=slider]]:bg-white [&>[role=slider]]:shadow-lg [&_[data-orientation=horizontal]]:bg-orange-200/60 [&_[data-orientation=horizontal]]:dark:bg-orange-900/40"
                     />
+                    <div className="flex justify-between text-xs text-muted-foreground mt-2">
+                      <span>Rs {priceRange[0].toLocaleString()}</span>
+                      <span>Rs {priceRange[1].toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
 

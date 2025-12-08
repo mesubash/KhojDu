@@ -45,9 +45,12 @@ export function Footer() {
             {/* Newsletter Signup */}
             <div className="space-y-3">
               <h4 className="font-semibold">Stay Updated</h4>
-              <div className="flex gap-2">
-                <Input placeholder="Enter your email" />
-                <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white">
+              <div className="flex gap-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
+                <Input
+                  placeholder="Enter your email"
+                  className="h-11 bg-white/10 dark:bg-gray-900/20 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-xl placeholder:text-muted-foreground/30 placeholder:font-light transition-all focus:bg-white/80 dark:focus:bg-gray-900/70 focus:backdrop-blur-2xl focus:ring-2 focus:ring-orange-300/70 focus:border-orange-300/70"
+                />
+                <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white h-11">
                   Subscribe
                 </Button>
               </div>

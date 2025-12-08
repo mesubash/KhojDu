@@ -74,10 +74,13 @@ export default function HomePage() {
             </p>
 
             {/* Search Bar */}
-            <Card className="p-6 max-w-2xl mx-auto mb-8">
+            <Card className="p-6 max-w-2xl mx-auto mb-8 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
-                  <Input placeholder="Search by location, property type..." className="h-12" />
+                  <Input
+                    placeholder="Search by location, property type..."
+                    className="h-12 bg-white/10 dark:bg-gray-900/20 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-xl placeholder:text-muted-foreground/30 placeholder:font-light transition-all focus:bg-white/80 dark:focus:bg-gray-900/70 focus:backdrop-blur-2xl focus:ring-2 focus:ring-orange-300/70 focus:border-orange-300/70"
+                  />
                 </div>
                 <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white h-12 px-8">
                   <Search className="w-4 h-4 mr-2" />
