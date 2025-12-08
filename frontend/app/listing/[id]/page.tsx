@@ -794,7 +794,7 @@ export default function ListingDetailPage() {
                   <select
                     value={reviewForm.stayDuration}
                     onChange={(e) => setReviewForm((prev) => ({ ...prev, stayDuration: e.target.value }))}
-                    className="w-full p-2 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-background text-foreground"
+                    className="w-full p-2 border border-white/15 dark:border-white/10 rounded-lg bg-white/5 dark:bg-gray-900/10 backdrop-blur-[30px] text-foreground focus:ring-2 focus:ring-orange-200/70 focus:border-orange-200/70"
                   >
                     <option value="">Select duration</option>
                     <option value="Less than 1 month">Less than 1 month</option>
@@ -811,7 +811,7 @@ export default function ListingDetailPage() {
                     value={reviewForm.review}
                     onChange={(e) => setReviewForm((prev) => ({ ...prev, review: e.target.value }))}
                     rows={4}
-                    className="resize-none"
+                    className="resize-none bg-white/5 dark:bg-gray-900/10 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-[40px] placeholder:text-muted-foreground/25 transition-all focus:bg-white/50 focus:backdrop-blur-[50px] focus:ring-2 focus:ring-orange-200/60 focus:border-orange-200/60"
                   />
                 </div>
                 <div className="flex space-x-3">

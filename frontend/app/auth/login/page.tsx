@@ -182,7 +182,7 @@ export default function LoginPage() {
                       onChange={(e) => handleInputChange("email", e.target.value)}
                       required
                       disabled={isLoading}
-                      className="h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
+                      className="h-12 bg-white/10 dark:bg-gray-900/20 border border-white/20 dark:border-white/15 shadow-md backdrop-blur-xl placeholder:text-muted-foreground/30 placeholder:font-light transition-all duration-300 focus:bg-white/80 dark:focus:bg-white/90 focus:backdrop-blur-2xl focus:ring-2 focus:ring-orange-400/70 focus:border-orange-400/70 focus:shadow-lg focus:shadow-orange-500/20 focus:placeholder:text-muted-foreground/60"
                     />
                   </TabsContent>
 
@@ -199,7 +199,7 @@ export default function LoginPage() {
                       required
                       disabled={isLoading}
                       maxLength={14}
-                      className="h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
+                      className="h-12 bg-white/10 dark:bg-gray-900/20 border border-white/20 dark:border-white/15 shadow-md backdrop-blur-xl placeholder:text-muted-foreground/30 placeholder:font-light transition-all duration-300 focus:bg-white/80 dark:focus:bg-white/90 focus:backdrop-blur-2xl focus:ring-2 focus:ring-orange-400/70 focus:border-orange-400/70 focus:shadow-lg focus:shadow-orange-500/20 focus:placeholder:text-muted-foreground/60"
                     />
                   </TabsContent>
                 </Tabs>
@@ -218,12 +218,12 @@ export default function LoginPage() {
                       onChange={(e) => handleInputChange("password", e.target.value)}
                       required
                       disabled={isLoading}
-                      className="h-12 pr-10 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
+                      className="h-12 pr-10 bg-white/10 dark:bg-gray-900/20 border border-white/20 dark:border-white/15 shadow-md backdrop-blur-xl placeholder:text-muted-foreground/30 placeholder:font-light transition-all duration-300 focus:bg-white/80 dark:focus:bg-white/90 focus:backdrop-blur-2xl focus:ring-2 focus:ring-orange-400/70 focus:border-orange-400/70 focus:shadow-lg focus:shadow-orange-500/20 focus:placeholder:text-muted-foreground/60"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>

@@ -72,6 +72,9 @@ export default function CreateListingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingExisting, setIsLoadingExisting] = useState(false)
   const [amenityOptions, setAmenityOptions] = useState<Amenity[]>([])
+  const glassInputClasses =
+    "bg-white/5 dark:bg-gray-900/10 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-[40px] placeholder:text-muted-foreground/25 transition-all focus:bg-white/50 focus:backdrop-blur-[50px] focus:ring-2 focus:ring-orange-200/60 focus:border-orange-200/60"
+  const glassTextareaClasses = glassInputClasses
   const [formData, setFormData] = useState({
     title: "",
     type: "" as PropertyType | "",
@@ -304,7 +307,7 @@ export default function CreateListingPage() {
                   value={formData.title}
                   onChange={(e) => handleInputChange("title", e.target.value)}
                   required
-                  className="mt-1 h-10 sm:h-12"
+                  className={`mt-1 h-10 sm:h-12 ${glassInputClasses}`}
                 />
               </div>
 
@@ -353,7 +356,7 @@ export default function CreateListingPage() {
                     value={formData.rent}
                     onChange={(e) => handleInputChange("rent", e.target.value)}
                     required
-                    className="mt-1 h-10 sm:h-12"
+                    className={`mt-1 h-10 sm:h-12 ${glassInputClasses}`}
                   />
                 </div>
                 <div>
@@ -367,7 +370,7 @@ export default function CreateListingPage() {
                     value={formData.deposit}
                     onChange={(e) => handleInputChange("deposit", e.target.value)}
                     required
-                    className="mt-1 h-10 sm:h-12"
+                    className={`mt-1 h-10 sm:h-12 ${glassInputClasses}`}
                   />
                 </div>
               </div>
@@ -382,7 +385,7 @@ export default function CreateListingPage() {
                   value={formData.description}
                   onChange={(e) => handleInputChange("description", e.target.value)}
                   rows={4}
-                  className="mt-1 resize-none"
+                  className={`mt-1 resize-none ${glassTextareaClasses}`}
                 />
               </div>
             </CardContent>

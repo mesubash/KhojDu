@@ -67,6 +67,9 @@ export default function ProfilePage() {
   const [wishlistLoading, setWishlistLoading] = useState(false)
   const [myReviews, setMyReviews] = useState<Review[]>([])
   const [reviewsLoading, setReviewsLoading] = useState(false)
+  const glassInputClasses =
+    "bg-white/5 dark:bg-gray-900/10 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-[40px] placeholder:text-muted-foreground/25 transition-all focus:bg-white/50 focus:backdrop-blur-[50px] focus:ring-2 focus:ring-orange-200/60 focus:border-orange-200/60"
+  const glassTextareaClasses = glassInputClasses
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -289,7 +292,7 @@ export default function ProfilePage() {
                       value={formData.name}
                       onChange={(e) => handleInputChange("name", e.target.value)}
                       disabled={!isEditing}
-                      className="mt-1"
+                      className={`mt-1 ${glassInputClasses}`}
                     />
                   </div>
                   <div>
@@ -301,7 +304,7 @@ export default function ProfilePage() {
                       type="email"
                       value={formData.email}
                       disabled
-                      className="mt-1"
+                      className={`mt-1 ${glassInputClasses}`}
                     />
                   </div>
                 </div>
@@ -317,7 +320,7 @@ export default function ProfilePage() {
                       value={formData.phone}
                       onChange={(e) => handleInputChange("phone", e.target.value)}
                       disabled={!isEditing}
-                      className="mt-1"
+                      className={`mt-1 ${glassInputClasses}`}
                     />
                   </div>
                   <div>
@@ -329,7 +332,7 @@ export default function ProfilePage() {
                       value={formData.occupation}
                       onChange={(e) => handleInputChange("occupation", e.target.value)}
                       disabled={!isEditing}
-                      className="mt-1"
+                      className={`mt-1 ${glassInputClasses}`}
                     />
                   </div>
                 </div>
@@ -344,7 +347,7 @@ export default function ProfilePage() {
                       value={formData.location}
                       onChange={(e) => handleInputChange("location", e.target.value)}
                       disabled={!isEditing}
-                      className="mt-1"
+                      className={`mt-1 ${glassInputClasses}`}
                     />
                   </div>
                   <div>
@@ -378,39 +381,39 @@ export default function ProfilePage() {
                       id="budgetMin"
                       type="number"
                       value={formData.budgetMin}
-                      onChange={(e) => handleInputChange("budgetMin", e.target.value)}
-                      disabled={!isEditing}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="budgetMax" className="text-sm font-medium">
-                      Maximum Budget (Rs)
+                    onChange={(e) => handleInputChange("budgetMin", e.target.value)}
+                    disabled={!isEditing}
+                    className={`mt-1 ${glassInputClasses}`}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="budgetMax" className="text-sm font-medium">
+                    Maximum Budget (Rs)
                     </Label>
                     <Input
                       id="budgetMax"
                       type="number"
                       value={formData.budgetMax}
-                      onChange={(e) => handleInputChange("budgetMax", e.target.value)}
-                      disabled={!isEditing}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="bio" className="text-sm font-medium">
-                    Bio
-                  </Label>
-                  <Textarea
-                    id="bio"
-                    value={formData.bio}
-                    onChange={(e) => handleInputChange("bio", e.target.value)}
+                    onChange={(e) => handleInputChange("budgetMax", e.target.value)}
                     disabled={!isEditing}
-                    rows={4}
-                    className="mt-1 resize-none"
+                    className={`mt-1 ${glassInputClasses}`}
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="bio" className="text-sm font-medium">
+                  Bio
+                </Label>
+                <Textarea
+                  id="bio"
+                  value={formData.bio}
+                  onChange={(e) => handleInputChange("bio", e.target.value)}
+                  disabled={!isEditing}
+                  rows={4}
+                  className={`mt-1 resize-none ${glassTextareaClasses}`}
+                />
+              </div>
 
                 <div className="flex items-center justify-end space-x-3">
                   <Button variant="outline" onClick={() => setIsEditing(false)} disabled={!isEditing}>

@@ -193,7 +193,7 @@ export default function SignupPage() {
                   onChange={(e) => handleInputChange("fullName", e.target.value)}
                   required
                   disabled={isLoading}
-                  className="mt-1 h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-sm placeholder:text-muted-foreground/60"
+                  className="mt-1 h-12 bg-white/5 dark:bg-gray-900/10 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-[40px] placeholder:text-muted-foreground/25 transition-all focus:bg-white/50 focus:backdrop-blur-[50px] focus:ring-2 focus:ring-orange-200/60 focus:border-orange-200/60"
                 />
                 </div>
 
@@ -209,7 +209,7 @@ export default function SignupPage() {
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   required
                   disabled={isLoading}
-                  className="mt-1 h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
+                  className="mt-1 h-12 bg-white/5 dark:bg-gray-900/10 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-[40px] placeholder:text-muted-foreground/25 transition-all focus:bg-white/50 focus:backdrop-blur-[50px] focus:ring-2 focus:ring-orange-200/60 focus:border-orange-200/60"
                 />
                 </div>
               </div>
@@ -227,7 +227,7 @@ export default function SignupPage() {
                   required
                   disabled={isLoading}
                   maxLength={20}
-                  className="mt-1 h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
+                  className="mt-1 h-12 bg-white/5 dark:bg-gray-900/10 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-[40px] placeholder:text-muted-foreground/25 transition-all focus:bg-white/50 focus:backdrop-blur-[50px] focus:ring-2 focus:ring-orange-200/60 focus:border-orange-200/60"
                 />
                 <p className="text-xs text-muted-foreground mt-1">We strip spaces/symbols; enter 8–14 digits including country code.</p>
               </div>
@@ -245,7 +245,7 @@ export default function SignupPage() {
                       value={formData.dateOfBirth}
                       onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
                       disabled={isLoading}
-                      className="mt-1 h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
+                      className="mt-1 h-12 bg-white/5 dark:bg-gray-900/10 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-[40px] placeholder:text-muted-foreground/25 transition-all focus:bg-white/50 focus:backdrop-blur-[50px] focus:ring-2 focus:ring-orange-200/60 focus:border-orange-200/60"
                     />
                     <p className="text-xs text-muted-foreground mt-1">Used to personalize your tenant profile.</p>
                   </div>
@@ -261,7 +261,7 @@ export default function SignupPage() {
                     value={formData.occupation}
                     onChange={(e) => handleInputChange("occupation", e.target.value)}
                     disabled={isLoading}
-                    className="mt-1 h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
+                    className="mt-1 h-12 bg-white/5 dark:bg-gray-900/10 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-[40px] placeholder:text-muted-foreground/25 transition-all focus:bg-white/50 focus:backdrop-blur-[50px] focus:ring-2 focus:ring-orange-200/60 focus:border-orange-200/60"
                   />
                 </div>
               </div>
@@ -281,7 +281,7 @@ export default function SignupPage() {
                       onChange={(e) => handleInputChange("password", e.target.value)}
                       required
                       disabled={isLoading}
-                      className="h-12 pr-10 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
+                      className="h-12 pr-10 bg-white/5 dark:bg-gray-900/10 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-[40px] placeholder:text-muted-foreground/25 transition-all focus:bg-white/50 focus:backdrop-blur-[50px] focus:ring-2 focus:ring-orange-200/60 focus:border-orange-200/60"
                     />
                     <button
                       type="button"
@@ -307,7 +307,7 @@ export default function SignupPage() {
                       onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                       required
                       disabled={isLoading}
-                      className="h-12 pr-10 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
+                      className="h-12 pr-10 bg-white/5 dark:bg-gray-900/10 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-[40px] placeholder:text-muted-foreground/25 transition-all focus:bg-white/50 focus:backdrop-blur-[50px] focus:ring-2 focus:ring-orange-200/60 focus:border-orange-200/60"
                     />
                     <button
                       type="button"
