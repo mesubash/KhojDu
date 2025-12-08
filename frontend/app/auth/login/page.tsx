@@ -138,11 +138,17 @@ export default function LoginPage() {
                   onValueChange={(value) => setLoginMethod(value as "email" | "phone")}
                 >
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="email" className="flex items-center space-x-2">
+                    <TabsTrigger
+                      value="email"
+                      className="flex items-center space-x-2 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700 data-[state=active]:border data-[state=active]:border-orange-200"
+                    >
                       <Mail className="h-4 w-4" />
                       <span>Email</span>
                     </TabsTrigger>
-                    <TabsTrigger value="phone" className="flex items-center space-x-2">
+                    <TabsTrigger
+                      value="phone"
+                      className="flex items-center space-x-2 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700 data-[state=active]:border data-[state=active]:border-orange-200"
+                    >
                       <Phone className="h-4 w-4" />
                       <span>Phone</span>
                     </TabsTrigger>
@@ -160,7 +166,7 @@ export default function LoginPage() {
                       onChange={(e) => handleInputChange("email", e.target.value)}
                       required
                       disabled={isLoading}
-                      className="h-12"
+                      className="h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
                     />
                   </TabsContent>
 
@@ -171,12 +177,13 @@ export default function LoginPage() {
                     <Input
                       id="phone"
                       type="tel"
-                      placeholder="+977 98XXXXXXXX"
+                      placeholder="+977 9812345678"
                       value={formData.phone}
                       onChange={(e) => handleInputChange("phone", e.target.value)}
                       required
                       disabled={isLoading}
-                      className="h-12"
+                      maxLength={14}
+                      className="h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
                     />
                   </TabsContent>
                 </Tabs>
@@ -189,12 +196,13 @@ export default function LoginPage() {
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
                       placeholder="Enter your password"
                       value={formData.password}
                       onChange={(e) => handleInputChange("password", e.target.value)}
                       required
                       disabled={isLoading}
-                      className="h-12 pr-10"
+                      className="h-12 pr-10 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
                     />
                     <button
                       type="button"

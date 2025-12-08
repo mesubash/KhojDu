@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,6 +33,8 @@ export default function SignupPage() {
     fullName: "",
     password: "",
     confirmPassword: "",
+    dateOfBirth: "",
+    occupation: "",
   })
 
   // If already authenticated, send to the role dashboard instead of showing signup
@@ -64,9 +66,10 @@ export default function SignupPage() {
       return
     }
 
-    // Validate phone number format (10 digits)
-    if (!/^[0-9]{10}$/.test(formData.phone)) {
-      toast.error("Phone number must be exactly 10 digits")
+    // Validate phone number format (up to 14 digits, allow country code and symbols)
+    const digitsOnly = formData.phone.replace(/\D/g, "")
+    if (digitsOnly.length < 8 || digitsOnly.length > 14) {
+      toast.error("Phone number must be 8–14 digits (country code allowed)")
       return
     }
 
@@ -84,8 +87,10 @@ export default function SignupPage() {
         fullName: formData.fullName,
         email: formData.email,
         password: formData.password,
-        phone: formData.phone,
+        phone: digitsOnly,
         role: userRole,
+        dateOfBirth: formData.dateOfBirth || undefined,
+        occupation: formData.occupation || undefined,
       })
 
       // ✅ Registration successful
@@ -114,7 +119,7 @@ export default function SignupPage() {
         <div className="absolute bottom-10 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-700"></div>
       </div>
 
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full max-w-3xl relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
           <Link
@@ -133,12 +138,12 @@ export default function SignupPage() {
         </div>
 
         <Card className="glass-card hover-lift smooth-shadow border-0 relative z-20">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-2xl">Create Account</CardTitle>
-            <CardDescription>
-              Fill in your details to create your account
-            </CardDescription>
-          </CardHeader>
+            <CardHeader className="text-center pb-4">
+              <CardTitle className="text-2xl">Create Account</CardTitle>
+              <CardDescription>
+                Sign up as a Tenant or Landlord. We’ll tailor the dashboard based on your choice.
+              </CardDescription>
+            </CardHeader>
           <CardContent>
             {error && (
               <Alert variant="destructive" className="mb-4">
@@ -157,11 +162,17 @@ export default function SignupPage() {
                   className="mt-2"
                 >
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="tenant" className="flex items-center space-x-2">
+                    <TabsTrigger
+                      value="tenant"
+                      className="flex items-center space-x-2 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700 data-[state=active]:border data-[state=active]:border-orange-200"
+                    >
                       <User className="h-4 w-4" />
                       <span>Tenant</span>
                     </TabsTrigger>
-                    <TabsTrigger value="landlord" className="flex items-center space-x-2">
+                    <TabsTrigger
+                      value="landlord"
+                      className="flex items-center space-x-2 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700 data-[state=active]:border data-[state=active]:border-orange-200"
+                    >
                       <Building className="h-4 w-4" />
                       <span>Landlord</span>
                     </TabsTrigger>
@@ -169,10 +180,11 @@ export default function SignupPage() {
                 </Tabs>
               </div>
 
-              <div>
-                <Label htmlFor="fullName" className="text-sm font-medium">
-                  Full Name
-                </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="fullName" className="text-sm font-medium">
+                    Full Name
+                  </Label>
                 <Input
                   id="fullName"
                   type="text"
@@ -181,14 +193,14 @@ export default function SignupPage() {
                   onChange={(e) => handleInputChange("fullName", e.target.value)}
                   required
                   disabled={isLoading}
-                  className="mt-1 h-12"
+                  className="mt-1 h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-sm placeholder:text-muted-foreground/60"
                 />
-              </div>
+                </div>
 
-              <div>
-                <Label htmlFor="email" className="text-sm font-medium">
-                  Email Address
-                </Label>
+                <div>
+                  <Label htmlFor="email" className="text-sm font-medium">
+                    Email Address
+                  </Label>
                 <Input
                   id="email"
                   type="email"
@@ -197,8 +209,9 @@ export default function SignupPage() {
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   required
                   disabled={isLoading}
-                  className="mt-1 h-12"
+                  className="mt-1 h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
                 />
+                </div>
               </div>
 
               <div>
@@ -208,64 +221,102 @@ export default function SignupPage() {
                 <Input
                   id="phone"
                   type="tel"
-                  placeholder="9841234567"
+                  placeholder="+1 (827) 629-8376"
                   value={formData.phone}
                   onChange={(e) => handleInputChange("phone", e.target.value)}
                   required
                   disabled={isLoading}
-                  maxLength={10}
-                  className="mt-1 h-12"
+                  maxLength={20}
+                  className="mt-1 h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
                 />
-                <p className="text-xs text-muted-foreground mt-1">Enter 10-digit phone number</p>
+                <p className="text-xs text-muted-foreground mt-1">We strip spaces/symbols; enter 8–14 digits including country code.</p>
               </div>
 
-              <div>
-                <Label htmlFor="password" className="text-sm font-medium">
-                  Password
-                </Label>
-                <div className="relative mt-1">
+              {/* Role-specific optional details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {role === "tenant" && (
+                  <div>
+                    <Label htmlFor="dateOfBirth" className="text-sm font-medium">
+                      Date of Birth (optional)
+                    </Label>
+                    <Input
+                      id="dateOfBirth"
+                      type="date"
+                      value={formData.dateOfBirth}
+                      onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
+                      disabled={isLoading}
+                      className="mt-1 h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Used to personalize your tenant profile.</p>
+                  </div>
+                )}
+                <div>
+                  <Label htmlFor="occupation" className="text-sm font-medium">
+                    {role === "landlord" ? "Business / Occupation (optional)" : "Occupation (optional)"}
+                  </Label>
                   <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Create a strong password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
-                    required
+                    id="occupation"
+                    type="text"
+                    placeholder={role === "landlord" ? "e.g., Property owner / Agent" : "e.g., Designer"}
+                    value={formData.occupation}
+                    onChange={(e) => handleInputChange("occupation", e.target.value)}
                     disabled={isLoading}
-                    className="h-12 pr-10"
+                    className="mt-1 h-12 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="confirmPassword" className="text-sm font-medium">
-                  Confirm Password
-                </Label>
-                <div className="relative mt-1">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                    required
-                    disabled={isLoading}
-                    className="h-12 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="password" className="text-sm font-medium">
+                    Password
+                  </Label>
+                  <div className="relative mt-1">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      placeholder="Create a strong password"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange("password", e.target.value)}
+                      required
+                      disabled={isLoading}
+                      className="h-12 pr-10 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="confirmPassword" className="text-sm font-medium">
+                    Confirm Password
+                  </Label>
+                  <div className="relative mt-1">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      placeholder="Confirm your password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                      required
+                      disabled={isLoading}
+                      className="h-12 pr-10 bg-white/70 dark:bg-gray-900/60 backdrop-blur-md placeholder:text-muted-foreground/50"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -291,7 +342,7 @@ export default function SignupPage() {
               <Button
                 type="submit"
                 className="w-full gradient-orange hover-lift text-white h-12 font-semibold shadow-lg shadow-orange-500/30"
-                disabled={isLoading}
+                disabled={isLoading || !agreeToTerms}
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center">
