@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -44,13 +45,22 @@ public class InquiryServiceImpl implements InquiryService {
     private final InquiryMapper inquiryMapper;
     private final EmailService emailService;
 
+    private User resolveUser(String identifier) {
+        Optional<User> byEmail = userRepository.findByEmail(identifier);
+        if (byEmail.isPresent()) return byEmail.get();
+        try {
+            Optional<User> byId = userRepository.findById(UUID.fromString(identifier));
+            if (byId.isPresent()) return byId.get();
+        } catch (IllegalArgumentException ignored) {}
+        throw new ResourceNotFoundException("User not found");
+    }
+
     @Override
     @Transactional
     public InquiryResponse createInquiry(String userEmail, InquiryRequest request) {
         log.info("Creating inquiry for property: {} by user: {}", request.getPropertyId(), userEmail);
 
-        User tenant = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User tenant = resolveUser(userEmail);
 
         Property property = propertyRepository.findById(request.getPropertyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
@@ -80,8 +90,7 @@ public class InquiryServiceImpl implements InquiryService {
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<InquiryResponse> getUserInquiries(String userEmail, int page, int size) {
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = resolveUser(userEmail);
 
         Pageable pageable = PaginationUtil.createPageable(page, size, "createdAt", "DESC");
         Page<Inquiry> inquiryPage = inquiryRepository.findByTenant(user, pageable);
@@ -97,8 +106,7 @@ public class InquiryServiceImpl implements InquiryService {
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<InquiryResponse> getLandlordInquiries(String landlordEmail, int page, int size) {
-        User landlord = userRepository.findByEmail(landlordEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User landlord = resolveUser(landlordEmail);
 
         Pageable pageable = PaginationUtil.createPageable(page, size, "createdAt", "DESC");
         Page<Inquiry> inquiryPage = inquiryRepository.findByLandlord(landlord, pageable);
@@ -117,8 +125,7 @@ public class InquiryServiceImpl implements InquiryService {
         Inquiry inquiry = inquiryRepository.findById(inquiryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inquiry not found"));
 
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = resolveUser(userEmail);
 
         // Check access
         if (!inquiry.getTenant().getId().equals(user.getId()) &&
@@ -141,8 +148,7 @@ public class InquiryServiceImpl implements InquiryService {
         Inquiry inquiry = inquiryRepository.findById(inquiryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inquiry not found"));
 
-        User sender = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User sender = resolveUser(userEmail);
 
         // Check access
         if (!inquiry.getTenant().getId().equals(sender.getId()) &&

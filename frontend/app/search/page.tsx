@@ -66,7 +66,7 @@ const getMockCoordinates = (index: number) => {
 export default function SearchPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list" | "map">("grid")
   const [searchQuery, setSearchQuery] = useState("")
-  const [priceRange, setPriceRange] = useState([5000, 50000])
+  const [priceRange, setPriceRange] = useState([1, 50000])
   const [propertyType, setPropertyType] = useState<PropertyType | "all">("all")
   const [selectedArea, setSelectedArea] = useState("all")
   const [areas, setAreas] = useState<string[]>(defaultAreas)

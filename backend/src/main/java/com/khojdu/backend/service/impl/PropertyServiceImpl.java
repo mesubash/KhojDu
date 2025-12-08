@@ -26,7 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -334,8 +336,19 @@ public class PropertyServiceImpl implements PropertyService {
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<PropertyListResponse> getLandlordProperties(String landlordId, int page, int size) {
-        User landlord = userRepository.findById(UUID.fromString(landlordId))
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        Optional<User> maybeLandlord;
+        try {
+            maybeLandlord = userRepository.findById(UUID.fromString(landlordId));
+        } catch (IllegalArgumentException e) {
+            // If the identifier is not a UUID, try treating it as email/username
+            maybeLandlord = userRepository.findByEmail(landlordId);
+        }
+
+        if (maybeLandlord == null || maybeLandlord.isEmpty()) {
+            log.warn("Landlord not found for identifier {}, returning empty property list", landlordId);
+            return new PagedResponse<>(Collections.emptyList(), page, size, 0, 0);
+        }
+        User landlord = maybeLandlord.get();
 
         Pageable pageable = PaginationUtil.createPageable(page, size, "createdAt", "DESC");
         Page<Property> propertyPage = propertyRepository.findByLandlord(landlord, pageable);

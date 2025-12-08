@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -29,13 +30,25 @@ public class WishlistServiceImpl implements WishlistService {
     private final PropertyRepository propertyRepository;
     private final PropertyMapper propertyMapper;
 
+    private User resolveUser(String identifier) {
+        // Try email first
+        Optional<User> byEmail = userRepository.findByEmail(identifier);
+        if (byEmail.isPresent()) return byEmail.get();
+        // Try UUID
+        try {
+            Optional<User> byId = userRepository.findById(UUID.fromString(identifier));
+            if (byId.isPresent()) return byId.get();
+        } catch (IllegalArgumentException ignored) {
+        }
+        throw new ResourceNotFoundException("User not found");
+    }
+
     @Override
     @Transactional
     public void addToWishlist(String userEmail, UUID propertyId) {
         log.info("Adding property {} to wishlist for user: {}", propertyId, userEmail);
 
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = resolveUser(userEmail);
 
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
@@ -55,8 +68,7 @@ public class WishlistServiceImpl implements WishlistService {
     public void removeFromWishlist(String userEmail, UUID propertyId) {
         log.info("Removing property {} from wishlist for user: {}", propertyId, userEmail);
 
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = resolveUser(userEmail);
 
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
@@ -72,8 +84,7 @@ public class WishlistServiceImpl implements WishlistService {
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<PropertyListResponse> getUserWishlist(String userEmail, int page, int size) {
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = resolveUser(userEmail);
 
         List<Property> wishlistProperties = user.getWishlistProperties();
 

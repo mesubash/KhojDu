@@ -12,6 +12,9 @@ import { getDashboardRouteForRole } from "@/lib/utils"
 import { Calendar, CheckCircle, Clock, Home, MapPin, MessageSquare, Search, Star } from "lucide-react"
 import Link from "next/link"
 import { fetchTenantInquiries, fetchWishlist, InquiryItem, WishlistItem } from "@/services/dashboardService"
+import { searchProperties } from "@/services/propertyService"
+import type { PropertyListItem } from "@/types/property"
+import { toast } from "sonner"
 
 export default function TenantDashboard() {
   const router = useRouter()
@@ -19,6 +22,7 @@ export default function TenantDashboard() {
   const [activeTab, setActiveTab] = useState<"overview" | "saved" | "visits">("overview")
   const [wishlist, setWishlist] = useState<WishlistItem[]>([])
   const [inquiries, setInquiries] = useState<InquiryItem[]>([])
+  const [recommended, setRecommended] = useState<PropertyListItem[]>([])
   const [isFetching, setIsFetching] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
@@ -36,17 +40,23 @@ export default function TenantDashboard() {
   }, [isAuthenticated, isLoading, router, user])
 
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated || !user || user.role !== UserRole.TENANT) return
     setIsFetching(true)
-    Promise.all([fetchWishlist({ page: 0, size: 10 }), fetchTenantInquiries({ page: 0, size: 10 })])
-      .then(([wishlistResp, inquiriesResp]) => {
+    Promise.all([
+      fetchWishlist({ page: 0, size: 10 }),
+      fetchTenantInquiries({ page: 0, size: 10 }),
+      searchProperties({ page: 0, size: 6, sortBy: "createdAt", sortDirection: "DESC" }),
+    ])
+      .then(([wishlistResp, inquiriesResp, recommendedResp]) => {
         setWishlist(wishlistResp?.content || [])
         setInquiries(inquiriesResp?.content || [])
+        setRecommended(recommendedResp?.content || [])
         setFetchError(null)
       })
       .catch((err) => {
         console.error("[TenantDashboard] Failed to load data", err)
         setFetchError("Could not load your dashboard data right now.")
+        toast.error("Failed to load some dashboard data.")
       })
       .finally(() => setIsFetching(false))
   }, [isAuthenticated])
@@ -157,33 +167,34 @@ export default function TenantDashboard() {
                   <CardTitle className="text-lg">Recommended for you</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {fetchError && (
-                    <div className="text-sm text-red-600">{fetchError}</div>
+                  {fetchError && <div className="text-sm text-red-600">{fetchError}</div>}
+                  {(!isFetching && recommended.length === 0) && (
+                    <p className="text-sm text-muted-foreground">No recommendations yet. Try saving homes to get better picks.</p>
                   )}
-                  {(isFetching ? [] : wishlist).map((home) => (
+                  {(isFetching ? [] : recommended).map((home) => (
                     <div key={home.id} className="flex items-start justify-between gap-4 border border-border rounded-lg p-4">
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-foreground">{home.title}</h3>
                           <Badge variant="secondary" className="bg-green-100 text-green-800">
-                            {home.status || "Available"}
+                            {home.status || (home.isAvailable ? "Available" : "Unavailable")}
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                          <MapPin className="h-4 w-4" /> {home.location}
+                          <MapPin className="h-4 w-4" /> {home.city || home.district || home.address || home.location || "Not specified"}
                         </p>
                         <div className="flex items-center gap-2 text-sm mt-2">
-                          <span className="font-semibold text-orange-600">Rs {(home.rent || 0).toLocaleString()}</span>
+                          <span className="font-semibold text-orange-600">Rs {(Number(home.monthlyRent) || 0).toLocaleString()}</span>
                           <span className="text-muted-foreground">/month</span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">{home.status}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Type: {home.propertyType || "Property"}</p>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <Button variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50">
-                          View details
+                        <Button asChild variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50">
+                          <Link href={`/listing/${home.id}`}>View details</Link>
                         </Button>
-                        <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white">
-                          Schedule visit
+                        <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white" disabled>
+                          Schedule visit (coming soon)
                         </Button>
                       </div>
                     </div>
