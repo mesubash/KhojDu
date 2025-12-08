@@ -41,6 +41,16 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, user?.role, router])
 
+  // Prefill remembered email
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const remembered = localStorage.getItem("__kd_remember_email")
+    if (remembered) {
+      setFormData((prev) => ({ ...prev, email: remembered }))
+      setRememberMe(true)
+    }
+  }, [])
+
   // ✅ Don't auto-redirect here - let middleware handle it
   // The handleSubmit function already handles post-login redirect
 
@@ -65,6 +75,12 @@ export default function LoginPage() {
         email: formData.email,
         password: formData.password,
       })
+
+      if (rememberMe && typeof window !== "undefined") {
+        localStorage.setItem("__kd_remember_email", formData.email)
+      } else if (typeof window !== "undefined") {
+        localStorage.removeItem("__kd_remember_email")
+      }
 
       console.log("[Login Page] Login successful, redirecting...")
 

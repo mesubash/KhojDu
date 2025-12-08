@@ -313,7 +313,7 @@ export default function LandlordDashboard() {
                 <Button variant="outline" onClick={() => setShowLogoutConfirm(false)}>
                   Cancel
                 </Button>
-                <Button variant="destructive" onClick={handleLogout}>
+                <Button variant="destructive" className="bg-red-600 hover:bg-red-700 text-white" onClick={handleLogout}>
                   Log out
                 </Button>
               </div>
