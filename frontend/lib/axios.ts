@@ -5,6 +5,7 @@ import axios, {
   AxiosInstance,
   InternalAxiosRequestConfig,
 } from "axios";
+import { toast } from "sonner"
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8089/api";
@@ -56,6 +57,21 @@ axiosInstance.interceptors.request.use(
   }
 );
 
+// Helper: redirect to login with current path
+const redirectToLogin = (message?: string) => {
+  if (typeof window === "undefined") return
+  if (message) {
+    try {
+      localStorage.setItem("__kd_login_notice", message)
+    } catch (_) {
+      // ignore storage failures
+    }
+    toast.error(message)
+  }
+  const current = window.location.pathname + window.location.search
+  window.location.href = `/auth/login?redirect=${encodeURIComponent(current)}`
+}
+
 // Response interceptor: Handle token refresh on 401 errors
 axiosInstance.interceptors.response.use(
   (response) => response, // Pass through successful responses
@@ -65,8 +81,26 @@ axiosInstance.interceptors.response.use(
     };
 
     // If error is not 401 or request doesn't exist, reject immediately
+    // Not a 401 or missing request
     if (error.response?.status !== 401 || !originalRequest) {
+      if (error.response?.status === 401 && typeof window !== "undefined") {
+        const hadToken = !!localStorage.getItem("__kd_token")
+        localStorage.removeItem("__kd_token");
+        localStorage.removeItem("__kd_user");
+        redirectToLogin(hadToken ? "Session expired. Please log in again." : "Please log in to access this content.");
+      }
       return Promise.reject(error);
+    }
+
+    // If 401 and no access token was ever set, just redirect to login
+    const hadToken = typeof window !== "undefined" && !!localStorage.getItem("__kd_token")
+    if (!hadToken) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("__kd_token")
+        localStorage.removeItem("__kd_user")
+      }
+      redirectToLogin("Please log in to access this content.")
+      return Promise.reject(error)
     }
 
     // ✅ DON'T try to refresh token for auth endpoints (login, register, etc.)
@@ -159,6 +193,7 @@ axiosInstance.interceptors.response.use(
         localStorage.removeItem("__kd_token");
         localStorage.removeItem("__kd_user");
         console.log("[Axios] ❌ Token refresh failed, cleared session");
+        redirectToLogin("Session expired. Please log in again.");
       }
 
       // ✅ Don't redirect here - let middleware handle navigation

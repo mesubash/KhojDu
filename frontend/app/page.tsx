@@ -187,6 +187,16 @@ export default function HomePage() {
                         <Button
                           size="sm"
                           className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            // Redirect to login with redirect param if not authenticated
+                            const token = typeof window !== "undefined" ? localStorage.getItem("__kd_token") : null
+                            if (!token) {
+                              window.location.href = `/auth/login?redirect=/listing/${property.id}`
+                              return
+                            }
+                            window.location.href = `/listing/${property.id}`
+                          }}
                         >
                           View Details
                         </Button>

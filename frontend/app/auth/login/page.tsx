@@ -41,6 +41,16 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, user?.role, router])
 
+  // Show pending login notice (set by axios interceptor)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const pending = localStorage.getItem("__kd_login_notice")
+    if (pending) {
+      toast.error(pending)
+      localStorage.removeItem("__kd_login_notice")
+    }
+  }, [])
+
   // Prefill remembered email
   useEffect(() => {
     if (typeof window === "undefined") return
