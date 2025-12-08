@@ -16,6 +16,7 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.http.converter.HttpMessageNotWritableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -252,6 +253,19 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex, WebRequest request) {
+        log.error("Method not supported: {}", ex.getMessage());
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.METHOD_NOT_ALLOWED.value(),
+                "Method Not Allowed",
+                "This endpoint does not support the attempted HTTP method.",
+                request.getDescription(false).replace("uri=", "")
+        );
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(error);
     }
 
 

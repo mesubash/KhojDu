@@ -74,4 +74,15 @@ public class ReviewController {
         ReviewSummaryResponse response = reviewService.getPropertyReviewSummary(propertyId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
+    @Operation(summary = "Get my reviews", description = "Get reviews written by the current user")
+    public ResponseEntity<ApiResponse<PagedResponse<ReviewResponse>>> getMyReviews(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Principal principal) {
+        PagedResponse<ReviewResponse> response = reviewService.getUserReviews(principal.getName(), page, size);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 }

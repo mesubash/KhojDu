@@ -13,4 +13,5 @@ public interface ReviewService {
     void deleteReview(UUID reviewId, String userEmail);
     PagedResponse<ReviewResponse> getPropertyReviews(UUID propertyId, int page, int size);
     ReviewSummaryResponse getPropertyReviewSummary(UUID propertyId);
+    PagedResponse<ReviewResponse> getUserReviews(String userEmail, int page, int size);
 }

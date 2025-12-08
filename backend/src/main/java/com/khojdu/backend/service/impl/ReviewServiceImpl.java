@@ -94,8 +94,7 @@ public class ReviewServiceImpl implements ReviewService {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
 
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = resolveUser(userEmail);
 
         // Check ownership
         if (!review.getTenant().getId().equals(user.getId())) {
@@ -126,8 +125,7 @@ public class ReviewServiceImpl implements ReviewService {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("Review not found"));
 
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = resolveUser(userEmail);
 
         // Check ownership or admin
         if (!review.getTenant().getId().equals(user.getId()) &&
@@ -181,5 +179,18 @@ public class ReviewServiceImpl implements ReviewService {
         summary.setRatingDistribution(distribution);
 
         return summary;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponse<ReviewResponse> getUserReviews(String userEmail, int page, int size) {
+        User user = resolveUser(userEmail);
+        Pageable pageable = PaginationUtil.createPageable(page, size, "createdAt", "DESC");
+        Page<Review> reviewPage = reviewRepository.findByTenant(user, pageable);
+        List<ReviewResponse> reviews = reviewPage.getContent()
+                .stream()
+                .map(reviewMapper::toReviewResponse)
+                .collect(Collectors.toList());
+        return PaginationUtil.createPagedResponse(reviewPage, reviews);
     }
 }
