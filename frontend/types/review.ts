@@ -12,6 +12,10 @@ export interface Review {
   id: string
   propertyId: string
   propertyTitle?: string
+  propertyAddress?: string
+  propertyCity?: string
+  propertyDistrict?: string
+  propertyPrimaryImage?: string
   tenantId?: string
   tenantName?: string
   tenantProfileImage?: string

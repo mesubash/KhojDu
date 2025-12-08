@@ -14,6 +14,10 @@ public class ReviewResponse {
     private UUID id;
     private UUID propertyId;
     private String propertyTitle;
+    private String propertyAddress;
+    private String propertyCity;
+    private String propertyDistrict;
+    private String propertyPrimaryImage;
     private UUID tenantId;
     private String tenantName;
     private String tenantProfileImage;
@@ -34,4 +38,3 @@ public class ReviewResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
-

@@ -505,25 +505,49 @@ export default function ProfilePage() {
                 <div className="space-y-6">
                   {myReviews.map((review) => (
                     <div key={review.id} className="border-b border-border pb-6 last:border-b-0">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="font-semibold text-foreground">{review.propertyTitle || "Property"}</h3>
-                          <div className="flex items-center space-x-2 mt-1">
+                      <div className="flex items-start gap-4">
+                        {review.propertyPrimaryImage && (
+                          <img
+                            src={review.propertyPrimaryImage}
+                            alt={review.propertyTitle || "Property"}
+                            className="w-24 h-24 rounded-lg object-cover border border-border"
+                          />
+                        )}
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="font-semibold text-foreground">{review.propertyTitle || "Property"}</h3>
+                              <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                                <MapPin className="h-4 w-4" />
+                                <span>
+                                  {review.propertyCity || review.propertyDistrict || review.propertyAddress || "Location N/A"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {review.createdAt ? format(new Date(review.createdAt), "MMM dd, yyyy") : ""}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-3">
                             {renderStars(review.overallRating || 0)}
+                            <span className="text-sm font-medium text-foreground">
+                              {(review.overallRating ?? 0).toFixed(1)}/5
+                            </span>
                             {review.stayDurationMonths && (
                               <span className="text-sm text-muted-foreground">
                                 Stayed for {review.stayDurationMonths} months
                               </span>
                             )}
                           </div>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {review.createdAt ? format(new Date(review.createdAt), "MMM dd, yyyy") : ""}
+
+                          {review.reviewText && <p className="text-foreground leading-relaxed">{review.reviewText}</p>}
+                          <div className="flex flex-col gap-1">
+                            {review.pros && <p className="text-sm text-green-600">Pros: {review.pros}</p>}
+                            {review.cons && <p className="text-sm text-red-600">Cons: {review.cons}</p>}
+                          </div>
                         </div>
                       </div>
-                      {review.reviewText && <p className="text-foreground leading-relaxed mb-3">{review.reviewText}</p>}
-                      {review.pros && <p className="text-sm text-green-600">Pros: {review.pros}</p>}
-                      {review.cons && <p className="text-sm text-red-600">Cons: {review.cons}</p>}
                     </div>
                   ))}
                 </div>
