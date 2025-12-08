@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MapPin, Phone, Mail, Clock, MessageSquare } from "lucide-react"
 
 export default function ContactPage() {
+  const glassInput =
+    "bg-white/10 dark:bg-gray-900/20 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-xl placeholder:text-muted-foreground/30 placeholder:font-light transition-all focus:bg-white/80 dark:focus:bg-gray-900/70 focus:backdrop-blur-2xl focus:ring-2 focus:ring-orange-300/70 focus:border-orange-300/70"
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -147,7 +149,7 @@ export default function ContactPage() {
                         onChange={(e) => handleChange("name", e.target.value)}
                         placeholder="Your full name"
                         required
-                        className="mt-1"
+                        className={`mt-1 ${glassInput}`}
                       />
                     </div>
                     <div>
@@ -161,7 +163,7 @@ export default function ContactPage() {
                         onChange={(e) => handleChange("email", e.target.value)}
                         placeholder="your@email.com"
                         required
-                        className="mt-1"
+                        className={`mt-1 ${glassInput}`}
                       />
                     </div>
                   </div>
@@ -177,7 +179,7 @@ export default function ContactPage() {
                         value={formData.phone}
                         onChange={(e) => handleChange("phone", e.target.value)}
                         placeholder="+977 98XXXXXXXX"
-                        className="mt-1"
+                        className={`mt-1 ${glassInput}`}
                       />
                     </div>
                     <div>
@@ -187,7 +189,7 @@ export default function ContactPage() {
                         onValueChange={(value) => handleChange("subject", value)}
                         required
                       >
-                        <SelectTrigger className="mt-1">
+                        <SelectTrigger className={`mt-1 ${glassInput}`}>
                           <SelectValue placeholder="Select a subject" />
                         </SelectTrigger>
                         <SelectContent>
@@ -213,7 +215,7 @@ export default function ContactPage() {
                       placeholder="Tell us how we can help you..."
                       rows={6}
                       required
-                      className="mt-1 resize-none"
+                      className={`mt-1 resize-none ${glassInput}`}
                     />
                   </div>
 
@@ -229,7 +231,7 @@ export default function ContactPage() {
                       <p className="text-sm text-muted-foreground text-center">
                         Messaging is paused. Open any property and tap the WhatsApp buttons to reach the landlord or book a visit.
                       </p>
-                      <div className="absolute inset-0 rounded-xl bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm pointer-events-none" />
+                      <div className="absolute inset-0 rounded-xl bg-white/40 dark:bg-gray-900/50 pointer-events-none" />
                     </>
                   )}
                 </form>
