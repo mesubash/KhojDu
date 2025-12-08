@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,20 +10,22 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Header } from "@/components/header"
-import { Home, ArrowLeft, Edit, Star, MapPin, Calendar, Heart, Camera } from "lucide-react"
+import { Home, ArrowLeft, Edit, Star, MapPin, Calendar, Heart, Camera, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/context/AuthContext"
+import { useRouter } from "next/navigation"
+import { fetchProfile, updateProfile } from "@/services/userService"
+import type { User } from "@/types/auth"
+import type { PropertyType } from "@/types/property"
+import { toast } from "sonner"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-const mockUser = {
-  name: "Priya Sharma",
-  email: "priya.sharma@email.com",
-  phone: "+977 9841234567",
-  avatar: "/placeholder.svg?height=100&width=100",
-  joinedDate: "January 2024",
-  location: "Kathmandu, Nepal",
-  bio: "Software engineer looking for comfortable and affordable accommodation in Kathmandu. I prefer quiet neighborhoods with good internet connectivity.",
-  verified: true,
-  rating: 4.8,
-  totalReviews: 12,
+const defaultUser: User = {
+  id: "",
+  email: "",
+  fullName: "",
+  role: "TENANT" as any,
+  isVerified: false,
 }
 
 const mockFavorites = [
@@ -79,24 +81,93 @@ const mockReviews = [
 ]
 
 export default function ProfilePage() {
+  const { isAuthenticated, user: authUser } = useAuth()
+  const router = useRouter()
+
   const [activeTab, setActiveTab] = useState("profile")
   const [isEditing, setIsEditing] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [profile, setProfile] = useState<User>(defaultUser)
   const [formData, setFormData] = useState({
-    name: mockUser.name,
-    email: mockUser.email,
-    phone: mockUser.phone,
-    location: mockUser.location,
-    bio: mockUser.bio,
+    name: "",
+    email: "",
+    phone: "",
+    location: "",
+    bio: "",
+    occupation: "",
+    budgetMin: "",
+    budgetMax: "",
+    preferredPropertyType: "" as PropertyType | "",
   })
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace("/auth/login?redirect=/profile")
+      return
+    }
+
+    const loadProfile = async () => {
+      try {
+        const data = await fetchProfile()
+        setProfile((prev) => ({
+          ...prev,
+          ...data,
+          fullName: data.fullName || authUser?.fullName || "",
+          email: data.email || authUser?.email || "",
+          avatar: data.profileImageUrl,
+        }))
+        setFormData({
+          name: data.fullName || authUser?.fullName || "",
+          email: data.email || authUser?.email || "",
+          phone: data.phone || "",
+          location: data.preferredLocation || "",
+          bio: data.bio || "",
+          occupation: data.occupation || "",
+          budgetMin: data.budgetMin?.toString() || "",
+          budgetMax: data.budgetMax?.toString() || "",
+          preferredPropertyType: data.preferredPropertyType || "",
+        })
+      } catch (err) {
+        console.error("[Profile] Failed to load profile", err)
+        toast.error("Could not load your profile right now.")
+        const status = (err as any)?.response?.status
+        if (status === 404 || status === 401) {
+          router.replace("/auth/login?redirect=/profile")
+        }
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadProfile()
+  }, [authUser?.email, authUser?.fullName, isAuthenticated, router])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleSave = () => {
-    // Handle save logic
-    setIsEditing(false)
-    alert("Profile updated successfully!")
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await updateProfile({
+        fullName: formData.name,
+        phone: formData.phone || undefined,
+        occupation: formData.occupation || undefined,
+        bio: formData.bio || undefined,
+        preferredLocation: formData.location || undefined,
+        budgetMin: formData.budgetMin ? Number(formData.budgetMin) : undefined,
+        budgetMax: formData.budgetMax ? Number(formData.budgetMax) : undefined,
+        preferredPropertyType: formData.preferredPropertyType || undefined,
+      })
+      toast.success("Profile updated successfully.")
+      setIsEditing(false)
+    } catch (err: any) {
+      console.error("[Profile] Update failed", err)
+      toast.error(err?.response?.data?.message || "Could not update profile.")
+    } finally {
+      setSaving(false)
+    }
   }
 
   const renderStars = (rating: number) => {
@@ -105,6 +176,24 @@ export default function ProfilePage() {
         {[1, 2, 3, 4, 5].map((star) => (
           <Star key={star} className={`h-3 w-3 ${star <= rating ? "text-yellow-400 fill-current" : "text-muted-foreground"}`} />
         ))}
+      </div>
+    )
+  }
+
+  const joinedDate = useMemo(() => {
+    if (!profile.createdAt) return ""
+    const date = new Date(profile.createdAt)
+    return date.toLocaleDateString(undefined, { year: "numeric", month: "long" })
+  }, [profile.createdAt])
+
+  if (isLoading) {
+    return (
+      <div className="page-shell">
+        <Header />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-orange-500 mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading your profile...</p>
+        </div>
       </div>
     )
   }
@@ -120,8 +209,10 @@ export default function ProfilePage() {
             <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6">
               <div className="relative">
                 <Avatar className="w-24 h-24 sm:w-32 sm:h-32">
-                  <AvatarImage src={mockUser.avatar || "/placeholder.svg"} alt={mockUser.name} />
-                  <AvatarFallback className="text-2xl">{mockUser.name.charAt(0)}</AvatarFallback>
+                  <AvatarImage src={profile.avatar || "/placeholder.svg"} alt={profile.fullName || "User"} />
+                  <AvatarFallback className="text-2xl">
+                    {(profile.fullName || profile.email || "U").charAt(0).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <button className="absolute bottom-0 right-0 bg-orange-500 text-white rounded-full p-2 hover:bg-orange-600 transition-colors">
                   <Camera className="h-4 w-4" />
@@ -129,7 +220,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex-1 text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{mockUser.name}</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{profile.fullName || profile.email}</h1>
                   <Button
                     onClick={() => setIsEditing(!isEditing)}
                     variant="outline"
@@ -142,22 +233,17 @@ export default function ProfilePage() {
                 <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 text-muted-foreground mb-3">
                   <div className="flex items-center justify-center sm:justify-start space-x-1">
                     <MapPin className="h-4 w-4" />
-                    <span>{mockUser.location}</span>
+                    <span>{profile.preferredLocation || "Add your location"}</span>
                   </div>
                   <div className="flex items-center justify-center sm:justify-start space-x-1">
                     <Calendar className="h-4 w-4" />
-                    <span>Joined {mockUser.joinedDate}</span>
+                    <span>{joinedDate ? `Joined ${joinedDate}` : "Joined soon"}</span>
                   </div>
-                  {mockUser.verified && (
+                  {profile.isVerified && (
                     <Badge className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">Verified User</Badge>
                   )}
                 </div>
-                <div className="flex items-center justify-center sm:justify-start space-x-2 mb-4">
-                  {renderStars(mockUser.rating)}
-                  <span className="text-sm font-medium text-foreground">{mockUser.rating}</span>
-                  <span className="text-sm text-muted-foreground">({mockUser.totalReviews} reviews)</span>
-                </div>
-                <p className="text-foreground leading-relaxed">{mockUser.bio}</p>
+                <p className="text-foreground leading-relaxed">{profile.bio || "Tell others about yourself."}</p>
               </div>
             </div>
           </CardContent>
@@ -200,8 +286,7 @@ export default function ProfilePage() {
                       id="email"
                       type="email"
                       value={formData.email}
-                      onChange={(e) => handleInputChange("email", e.target.value)}
-                      disabled={!isEditing}
+                      disabled
                       className="mt-1"
                     />
                   </div>
@@ -222,13 +307,77 @@ export default function ProfilePage() {
                     />
                   </div>
                   <div>
+                    <Label htmlFor="occupation" className="text-sm font-medium">
+                      Occupation
+                    </Label>
+                    <Input
+                      id="occupation"
+                      value={formData.occupation}
+                      onChange={(e) => handleInputChange("occupation", e.target.value)}
+                      disabled={!isEditing}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
                     <Label htmlFor="location" className="text-sm font-medium">
-                      Location
+                      Preferred Location
                     </Label>
                     <Input
                       id="location"
                       value={formData.location}
                       onChange={(e) => handleInputChange("location", e.target.value)}
+                      disabled={!isEditing}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="preferredPropertyType" className="text-sm font-medium">
+                      Preferred Property Type
+                    </Label>
+                    <Select
+                      value={formData.preferredPropertyType}
+                      onValueChange={(value) => handleInputChange("preferredPropertyType", value as PropertyType)}
+                      disabled={!isEditing}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ROOM">Room</SelectItem>
+                        <SelectItem value="FLAT">Flat</SelectItem>
+                        <SelectItem value="HOUSE">House</SelectItem>
+                        <SelectItem value="APARTMENT">Apartment</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="budgetMin" className="text-sm font-medium">
+                      Minimum Budget (Rs)
+                    </Label>
+                    <Input
+                      id="budgetMin"
+                      type="number"
+                      value={formData.budgetMin}
+                      onChange={(e) => handleInputChange("budgetMin", e.target.value)}
+                      disabled={!isEditing}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="budgetMax" className="text-sm font-medium">
+                      Maximum Budget (Rs)
+                    </Label>
+                    <Input
+                      id="budgetMax"
+                      type="number"
+                      value={formData.budgetMax}
+                      onChange={(e) => handleInputChange("budgetMax", e.target.value)}
                       disabled={!isEditing}
                       className="mt-1"
                     />
@@ -249,16 +398,21 @@ export default function ProfilePage() {
                   />
                 </div>
 
-                {isEditing && (
-                  <div className="flex space-x-4">
-                    <Button onClick={handleSave} className="bg-orange-500 hover:bg-orange-600 text-white">
-                      Save Changes
-                    </Button>
-                    <Button onClick={() => setIsEditing(false)} variant="outline">
-                      Cancel
-                    </Button>
-                  </div>
-                )}
+                <div className="flex items-center justify-end space-x-3">
+                  <Button variant="outline" onClick={() => setIsEditing(false)} disabled={!isEditing}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSave} disabled={!isEditing || saving}>
+                    {saving ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Saving...
+                      </span>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

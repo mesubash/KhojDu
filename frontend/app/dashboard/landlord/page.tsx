@@ -5,110 +5,50 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
-  Search,
-  Plus,
-  MessageSquare,
-  Edit,
-  Trash2,
-  Eye,
-  MapPin,
-  Menu,
-  X,
-  Star,
-  TrendingUp,
-  Home,
-  BarChart3,
-  ClipboardList,
-  LogOut,
-  User,
+    Search,
+    Plus,
+    MessageSquare,
+    Edit,
+    Trash2,
+    Eye,
+    MapPin,
+    Menu,
+    X,
+    Star,
+    TrendingUp,
+    Home,
+    BarChart3,
+    ClipboardList,
+    LogOut,
+    User, SignalZero,
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/context/AuthContext"
 import { UserRole } from "@/types/auth"
 import { getDashboardRouteForRole } from "@/lib/utils"
 import { fetchLandlordProperties, LandlordProperty } from "@/services/dashboardService"
-
-const mockListings = [
-  {
-    id: 1,
-    title: "Cozy Room in Thamel",
-    type: "Room",
-    rent: 15000,
-    deposit: 30000,
-    location: "Thamel, Kathmandu",
-    status: "Active",
-    views: 245,
-    messages: 8,
-    image: "/placeholder.svg?height=150&width=200",
-    rating: 4.6,
-    totalReviews: 18,
-    occupancyRate: 95,
-    lastBooked: "2024-03-01",
-  },
-  {
-    id: 2,
-    title: "Spacious Flat in Baneshwor",
-    type: "Flat",
-    rent: 25000,
-    deposit: 50000,
-    location: "Baneshwor, Kathmandu",
-    status: "Active",
-    views: 189,
-    messages: 5,
-    image: "/placeholder.svg?height=150&width=200",
-    rating: 4.3,
-    totalReviews: 12,
-    occupancyRate: 88,
-    lastBooked: "2024-02-15",
-  },
-]
-
-const mockReviews = [
-  {
-    id: 1,
-    propertyTitle: "Cozy Room in Thamel",
-    tenant: {
-      name: "Priya Sharma",
-      avatar: "/placeholder.svg?height=40&width=40",
-      initials: "PS",
-    },
-    rating: 5,
-    date: "2024-02-15",
-    review: "Excellent room with all promised amenities. Very responsive landlord. Highly recommended!",
-    stayDuration: "6 months",
-  },
-  {
-    id: 2,
-    propertyTitle: "Spacious Flat in Baneshwor",
-    tenant: {
-      name: "Amit Thapa",
-      avatar: "/placeholder.svg?height=40&width=40",
-      initials: "AT",
-    },
-    rating: 4,
-    date: "2024-01-20",
-    review: "Good property in prime location. Landlord is cooperative and maintains the property well.",
-    stayDuration: "3 months",
-  },
-]
-
-const mockStats = [
-  { title: "Total Properties", value: "2", change: "+1 this month", icon: Search },
-  { title: "Total Views", value: "434", change: "+23% this month", icon: Eye },
-  { title: "Messages", value: "13", change: "5 unread", icon: MessageSquare },
-  { title: "Average Rating", value: "4.5", change: "Based on 30 reviews", icon: Star },
-]
+import { deleteProperty, togglePropertyAvailability } from "@/services/propertyService"
+import { toast } from "sonner"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function LandlordDashboard() {
   const router = useRouter()
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading, logout } = useAuth()
   const [activeTab, setActiveTab] = useState("overview")
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [properties, setProperties] = useState<LandlordProperty[]>([])
   const [isFetching, setIsFetching] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [isMutating, setIsMutating] = useState<string | null>(null)
+  const handleLogout = async () => {
+    try {
+      await logout()
+      router.replace("/auth/login")
+    } catch (err) {
+      console.error("[Dashboard] Logout failed", err)
+    }
+  }
 
   // Protect the dashboard - redirect if not authenticated
   useEffect(() => {
@@ -158,6 +98,28 @@ export default function LandlordDashboard() {
     return null
   }
 
+  const derivedStats = [
+    { title: "Total Properties", value: properties.length.toString(), change: "", icon: Search },
+    {
+      title: "Active Listings",
+      value: properties.filter((p) => p.status?.toLowerCase() === "approved" || p.status?.toLowerCase() === "active").length.toString(),
+      change: "",
+      icon: Eye,
+    },
+    {
+      title: "Messages",
+      value: properties.reduce((acc, p) => acc + (p.messages ?? 0), 0).toString(),
+      change: "",
+      icon: MessageSquare,
+    },
+    {
+      title: "Views",
+      value: properties.reduce((acc, p) => acc + (p.views ?? 0), 0).toString(),
+      change: "",
+      icon: Star,
+    },
+  ]
+
   const renderStars = (rating: number) => {
     return (
       <div className="flex items-center space-x-1">
@@ -168,33 +130,40 @@ export default function LandlordDashboard() {
     )
   }
 
+  const handleToggleAvailability = async (propertyId: string) => {
+    setIsMutating(propertyId)
+    try {
+      await togglePropertyAvailability(propertyId)
+      toast.success("Availability updated")
+      // refresh list
+      const updated = await fetchLandlordProperties({ page: 0, size: 20 })
+      setProperties(updated?.content || [])
+    } catch (err) {
+      console.error("[LandlordDashboard] Toggle availability failed", err)
+      toast.error("Could not update availability.")
+    } finally {
+      setIsMutating(null)
+    }
+  }
+
+  const handleDelete = async (propertyId: string) => {
+    const confirm = window.confirm("Delete this listing? This cannot be undone.")
+    if (!confirm) return
+    setIsMutating(propertyId)
+    try {
+      await deleteProperty(propertyId)
+      toast.success("Listing deleted")
+      setProperties((prev) => prev.filter((p) => p.id !== propertyId))
+    } catch (err) {
+      console.error("[LandlordDashboard] Delete failed", err)
+      toast.error("Could not delete listing.")
+    } finally {
+      setIsMutating(null)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
-      {/* Intro banner */}
-      <div className="container-responsive py-6 lg:py-8">
-        <div className="bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-orange-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <p className="text-sm text-orange-500 font-medium">Landlord Space</p>
-              <h1 className="text-3xl font-bold text-foreground">Manage your listings effortlessly</h1>
-              <p className="text-muted-foreground">Track performance, respond to tenants, and keep your properties updated.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link href="/dashboard/create">
-                <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white">
-                  <Plus className="h-4 w-4 mr-2" /> Add listing
-                </Button>
-              </Link>
-              <Link href="/messages">
-                <Button variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50">
-                  <MessageSquare className="h-4 w-4 mr-2" /> Messages
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="flex">
         {/* Mobile Sidebar Overlay */}
         {sidebarOpen && (
@@ -221,9 +190,12 @@ export default function LandlordDashboard() {
                   </span>
                 </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)} className="lg:hidden">
-                <X className="h-5 w-5" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)} className="lg:hidden">
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
 
             <nav className="space-y-2">
@@ -307,7 +279,10 @@ export default function LandlordDashboard() {
                 <span>Profile</span>
               </button>
 
-              <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
                 <LogOut className="h-5 w-5" />
                 <span>Logout</span>
               </button>
@@ -317,6 +292,31 @@ export default function LandlordDashboard() {
 
         {/* Main Content */}
         <div className="flex-1 lg:ml-0">
+          {/* Intro banner */}
+          <div className="container-responsive py-6 lg:py-8">
+            <div className="bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-orange-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <p className="text-sm text-orange-500 font-medium">Landlord Space</p>
+                  <h1 className="text-3xl font-bold text-foreground">Manage your listings effortlessly</h1>
+                  <p className="text-muted-foreground">Track performance, respond to tenants, and keep your properties updated.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link href="/dashboard/create">
+                    <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white">
+                      <Plus className="h-4 w-4 mr-2" /> Add listing
+                    </Button>
+                  </Link>
+                  <Link href="/messages">
+                    <Button variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50">
+                      <MessageSquare className="h-4 w-4 mr-2" /> Messages
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Mobile Header */}
           <div className="lg:hidden bg-card border-b border-border px-4 py-3">
             <div className="flex items-center justify-between">
@@ -339,7 +339,7 @@ export default function LandlordDashboard() {
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {mockStats.map((stat, index) => {
+                  {derivedStats.map((stat, index) => {
                     const Icon = stat.icon
                     return (<Card key={index} className="rounded-xl shadow-sm">
                       <CardContent className="p-6">
@@ -347,7 +347,7 @@ export default function LandlordDashboard() {
                           <div>
                             <p className="text-sm text-muted-foreground">{stat.title}</p>
                             <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                            <p className="text-sm text-green-600 dark:text-green-400">{stat.change}</p>
+                            {stat.change && <p className="text-sm text-green-600 dark:text-green-400">{stat.change}</p>}
                           </div>
                           <Icon className="h-8 w-8 text-orange-600" />
                         </div>
@@ -368,12 +368,14 @@ export default function LandlordDashboard() {
                     <CardContent className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground text-sm">Views this month</span>
-                        <span className="text-lg font-semibold text-foreground">+432</span>
+                        <span className="text-lg font-semibold text-foreground">
+                          {derivedStats[3]?.value || "0"}
+                        </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground text-sm">Avg. rating</span>
                         <span className="flex items-center gap-1 font-semibold text-foreground">
-                          4.6 <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                          0.0 <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -389,7 +391,7 @@ export default function LandlordDashboard() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {(properties.length ? properties : mockListings).slice(0, 3).map((listing) => (
+                      {properties.slice(0, 3).map((listing) => (
                         <div key={listing.id} className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div className="w-9 h-9 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center text-sm font-semibold">
@@ -414,21 +416,7 @@ export default function LandlordDashboard() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {mockReviews.slice(0, 2).map((review) => (
-                        <div key={review.id} className="flex items-start gap-3">
-                          <Avatar className="w-9 h-9">
-                            <AvatarImage src={review.tenant.avatar || "/placeholder.svg"} alt={review.tenant.name} />
-                            <AvatarFallback className="text-xs">{review.tenant.initials}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              {renderStars(review.rating)}
-                              <span className="text-xs text-muted-foreground">{review.propertyTitle}</span>
-                            </div>
-                            <p className="text-sm text-foreground line-clamp-2">{review.review}</p>
-                          </div>
-                        </div>
-                      ))}
+                      <p className="text-sm text-muted-foreground">No recent reviews available.</p>
                     </CardContent>
                   </Card>
                 </div>
@@ -455,107 +443,131 @@ export default function LandlordDashboard() {
                   <div className="text-sm text-red-600 mb-4">{fetchError}</div>
                 )}
 
+                {!isFetching && properties.length === 0 && (
+                  <div className="text-center text-muted-foreground border border-dashed border-border rounded-xl py-10">
+                    No listings yet. Create your first property to see it here.
+                  </div>
+                )}
+
                 <div className="grid gap-6">
-                  {(isFetching ? [] : properties).map((listing) => (
-                    <Card key={listing.id} className="rounded-xl shadow-sm hover:shadow-md transition-shadow bg-card">
-                      <CardContent className="p-6">
-                        <div className="flex flex-col lg:flex-row gap-6">
-                          <img
-                            src={"/placeholder.svg"}
-                            alt={listing.title}
-                            className="w-full lg:w-48 h-32 object-cover rounded-lg"
-                          />
+                  {(isFetching ? [] : properties).map((listing) => {
+                    const locationLabel =
+                      listing.location ||
+                      [listing.address, listing.city, listing.district].filter(Boolean).join(", ") ||
+                      "Not specified"
+                    const displayLocation = locationLabel.split(",").slice(0, 3).map((part) => part.trim()).filter(Boolean).join(", ")
+                    const isActive = listing.isAvailable ?? listing.status?.toLowerCase() === "active"
 
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-2 gap-2">
-                              <div className="min-w-0 flex-1">
-                                <h3 className="text-xl font-semibold text-foreground truncate">{listing.title}</h3>
-                                <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 text-sm text-muted-foreground mt-1">
-                                  <span className="flex items-center">
-                                    <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
-                                    <span className="truncate">{listing.location}</span>
-                                  </span>
-                                  <Badge
-                                    variant={listing.status === "Active" ? "default" : "secondary"}
-                                    className={`w-fit text-xs ${listing.status === "Active" ? "bg-green-100 text-green-800" : ""}`}
+                    return (
+                      <Card key={listing.id} className="rounded-xl shadow-sm hover:shadow-md transition-shadow bg-card">
+                        <CardContent className="p-6">
+                          <div className="flex flex-col lg:flex-row gap-6">
+                            <img
+                              src={listing.image || listing.primaryImageUrl || "/placeholder.svg"}
+                              alt={listing.title}
+                              className="w-full lg:w-48 h-32 object-cover rounded-lg"
+                            />
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-2 gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <h3 className="text-xl font-semibold text-foreground truncate">{listing.title}</h3>
+                                  <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 text-sm text-muted-foreground mt-1">
+                                    <span className="flex items-center">
+                                      <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
+                                      <span className="truncate max-w-[240px]" title={locationLabel}>
+                                        {displayLocation || "Not specified"}
+                                      </span>
+                                    </span>
+                                    <Badge
+                                      variant={isActive ? "default" : "secondary"}
+                                      className={`w-fit text-xs ${isActive ? "bg-green-100 text-green-800" : ""}`}
+                                    >
+                                      {isActive ? "Active" : listing.status || "Inactive"}
+                                    </Badge>
+                                  </div>
+                                  {/* Rating and Reviews */}
+                                  <div className="flex items-center space-x-2 mt-2">
+                                    {renderStars(listing.rating || 0)}
+                                    <span className="text-sm font-medium text-foreground">{listing.rating || "N/A"}</span>
+                                    <span className="text-sm text-muted-foreground">({listing.totalReviews || 0} reviews)</span>
+                                  </div>
+                                </div>
+                                <div className="flex space-x-2">
+                                  <Button
+                                    asChild
+                                    size="icon"
+                                    variant="ghost"
+                                    className="text-blue-700 hover:bg-blue-50"
+                                    aria-label="Edit listing"
+                                    disabled={isMutating === listing.id}
                                   >
-                                    {listing.status}
-                                  </Badge>
+                                    <Link href={`/dashboard/create?id=${listing.id}`}>
+                                      <Edit className="h-4 w-4" />
+                                    </Link>
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="text-red-600 hover:bg-red-50"
+                                    onClick={() => handleDelete(listing.id)}
+                                    disabled={isMutating === listing.id}
+                                    aria-label="Delete listing"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
                                 </div>
-                                {/* Rating and Reviews */}
-                                <div className="flex items-center space-x-2 mt-2">
-                                  {renderStars(listing.rating || 0)}
-                                  <span className="text-sm font-medium text-foreground">{listing.rating || "N/A"}</span>
-                                  <span className="text-sm text-muted-foreground">({listing.totalReviews || 0} reviews)</span>
+                              </div>
+
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm text-muted-foreground mb-4">
+                                <div>
+                                  <span className="block text-lg font-bold text-orange-600">
+                                    Rs {(listing.monthlyRent || 0).toLocaleString()}
+                                  </span>
+                                  <span>per month</span>
+                                </div>
+                                <div>
+                                  <span className="flex items-center">
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    {listing.views ?? listing.viewCount ?? 0}
+                                  </span>
+                                  <span>views</span>
+                                </div>
+                                <div>
+                                  <span className="flex items-center">
+                                    <MessageSquare className="h-4 w-4 mr-1" />
+                                    {listing.messages ?? listing.inquiryCount ?? 0}
+                                  </span>
+                                  <span>messages</span>
+                                </div>
+                                <div>
+                                  <span className="text-green-600 font-medium">{listing.occupancyRate ?? 0}%</span>
+                                  <span>occupancy</span>
                                 </div>
                               </div>
-                              <div className="flex space-x-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-orange-600 text-orange-600 hover:bg-orange-50 bg-transparent"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-red-600 text-red-600 hover:bg-red-50 bg-transparent"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm text-muted-foreground mb-4">
-                              <div>
-                                <span className="block text-lg font-bold text-orange-600">
-                                  Rs {(listing.monthlyRent || 0).toLocaleString()}
-                                </span>
-                                <span>per month</span>
-                              </div>
-                              <div>
-                                <span className="flex items-center">
-                                  <Eye className="h-4 w-4 mr-1" />
-                                  {listing.views ?? 0}
-                                </span>
-                                <span>views</span>
-                              </div>
-                              <div>
-                                <span className="flex items-center">
-                                  <MessageSquare className="h-4 w-4 mr-1" />
-                                  {listing.messages ?? 0}
-                                </span>
-                                <span>messages</span>
-                              </div>
-                              <div>
-                                <span className="text-green-600 font-medium">{listing.occupancyRate}%</span>
-                                <span>occupancy</span>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                              <Link href={`/listing/${listing.id}`}>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="w-full sm:w-auto border-border bg-transparent"
-                                >
-                                  View Details
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Button asChild variant="secondary" size="sm" className="rounded-lg">
+                                  <Link href={`/listing/${listing.id}`}>View details</Link>
                                 </Button>
-                              </Link>
-                              <Button
-                                size="sm"
-                                className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white"
-                              >
-                                Promote
-                              </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="rounded-lg"
+                                  variant={isActive ? "outline" : "default"}
+                                  onClick={() => handleToggleAvailability(listing.id)}
+                                  disabled={isMutating === listing.id}
+                                >
+                                  {isActive ? "Deactivate" : "Activate"}
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -602,32 +614,7 @@ export default function LandlordDashboard() {
                     <CardTitle className="text-xl">Recent Reviews</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-6">
-                      {mockReviews.map((review) => (
-                        <div key={review.id} className="border-b border-border pb-6 last:border-b-0 dark:border-gray-800">
-                          <div className="flex items-start space-x-4">
-                            <Avatar className="w-10 h-10">
-                              <AvatarImage src={review.tenant.avatar || "/placeholder.svg"} alt={review.tenant.name} />
-                              <AvatarFallback>{review.tenant.initials}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between mb-2">
-                                <div>
-                                  <h4 className="font-medium text-foreground">{review.tenant.name}</h4>
-                                  <p className="text-sm text-orange-600">{review.propertyTitle}</p>
-                                  <div className="flex items-center space-x-2 mt-1">
-                                    {renderStars(review.rating)}
-                                    <span className="text-sm text-muted-foreground">Stayed for {review.stayDuration}</span>
-                                  </div>
-                                </div>
-                                <div className="text-sm text-muted-foreground">{review.date}</div>
-                              </div>
-                              <p className="text-foreground leading-relaxed">{review.review}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <p className="text-sm text-muted-foreground">No recent reviews available.</p>
                   </CardContent>
                 </Card>
               </div>

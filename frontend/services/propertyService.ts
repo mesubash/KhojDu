@@ -1,0 +1,94 @@
+import axiosInstance from "@/lib/axios"
+import type { ApiResponse } from "@/types/auth"
+import type {
+  PagedResponse,
+  PropertyCreatePayload,
+  PropertyListItem,
+  PropertyDetail,
+  PropertySearchRequest,
+} from "@/types/property"
+import type { Review, ReviewSummary } from "@/types/review"
+import type { Amenity } from "@/types/property"
+
+// Search properties using backend search endpoint
+export async function searchProperties(params: PropertySearchRequest = {}) {
+  const payload: PropertySearchRequest = {
+    page: params.page ?? 0,
+    size: params.size ?? 12,
+    sortBy: params.sortBy ?? "createdAt",
+    sortDirection: params.sortDirection ?? "DESC",
+    availableOnly: params.availableOnly ?? true,
+    ...params,
+  }
+
+  const { data } = await axiosInstance.post<ApiResponse<PagedResponse<PropertyListItem>>>(
+    "/search/properties",
+    payload
+  )
+
+  return data.data
+}
+
+// Fetch list of cities that have properties
+export async function fetchCities(): Promise<string[]> {
+  const { data } = await axiosInstance.get<ApiResponse<string[]>>("/search/cities")
+  return data.data || []
+}
+
+// Create a new property listing
+export async function createProperty(payload: PropertyCreatePayload) {
+  const { data } = await axiosInstance.post<ApiResponse<any>>("/properties", payload)
+  return data.data
+}
+
+// Get a single property detail (public)
+export async function fetchProperty(id: string): Promise<PropertyDetail> {
+  const { data } = await axiosInstance.get<ApiResponse<PropertyDetail>>(`/properties/${id}`)
+  return data.data
+}
+
+export async function deleteProperty(id: string) {
+  const { data } = await axiosInstance.delete<ApiResponse<any>>(`/properties/${id}`)
+  return data.data
+}
+
+export async function togglePropertyAvailability(id: string) {
+  const { data } = await axiosInstance.put<ApiResponse<any>>(`/properties/${id}/toggle-availability`)
+  return data.data
+}
+
+export async function updateProperty(id: string, payload: Partial<PropertyCreatePayload>) {
+  const { data } = await axiosInstance.put<ApiResponse<any>>(`/properties/${id}`, payload)
+  return data.data
+}
+
+export async function fetchLandlordProperty(id: string): Promise<PropertyDetail> {
+  const { data } = await axiosInstance.get<ApiResponse<PropertyDetail>>(`/properties/landlord/${id}`)
+  return data.data
+}
+
+export async function uploadPropertyImages(id: string, files: File[]) {
+  const formData = new FormData()
+  files.forEach((file) => formData.append("images", file))
+  const { data } = await axiosInstance.post<ApiResponse<string[]>>(`/properties/${id}/images`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  })
+  return data.data
+}
+
+export async function fetchAmenities(): Promise<Amenity[]> {
+  const { data } = await axiosInstance.get<ApiResponse<Amenity[]>>("/amenities")
+  return data.data || []
+}
+
+export async function fetchPropertyReviews(propertyId: string, page = 0, size = 10) {
+  const { data } = await axiosInstance.get<ApiResponse<PagedResponse<Review>>>(
+    `/reviews/property/${propertyId}?page=${page}&size=${size}`
+  )
+  return data.data
+}
+
+export async function fetchPropertyReviewSummary(propertyId: string) {
+  const { data } = await axiosInstance.get<ApiResponse<ReviewSummary>>(`/reviews/property/${propertyId}/summary`)
+  return data.data
+}

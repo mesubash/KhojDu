@@ -3,11 +3,11 @@
 import { useEffect, useRef } from "react"
 
 interface Property {
-  id: number
+  id: string
   title: string
   location: string
-  price: number
-  coordinates: { lat: number; lng: number }
+  price?: number
+  coordinates?: { lat: number; lng: number } | null
 }
 
 interface PropertyMapProps {

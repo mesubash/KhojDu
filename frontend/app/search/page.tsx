@@ -1,19 +1,22 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, Heart, MessageSquare, Grid3X3, List } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Search, MapPin, Heart, MessageSquare, Grid3X3, List, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { PropertyMap } from "@/components/property-map"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import { fetchCities, searchProperties } from "@/services/propertyService"
+import type { PropertyListItem, PropertyType } from "@/types/property"
 
-const kathmanduAreas = [
+const defaultAreas = [
   "Thamel",
   "Baneshwor",
   "New Baneshwor",
@@ -31,86 +34,98 @@ const kathmanduAreas = [
   "Budhanilkantha",
 ]
 
-const mockListings = [
-  {
-    id: 1,
-    title: "Cozy Room in Thamel",
-    type: "Room",
-    rent: 15000,
-    location: "Thamel, Kathmandu",
-    image: "/placeholder.svg?height=250&width=400",
-    amenities: ["Wi-Fi", "Water", "Security"],
-    featured: true,
-  },
-  {
-    id: 2,
-    title: "Spacious Flat in Baneshwor",
-    type: "Flat",
-    rent: 25000,
-    location: "Baneshwor, Kathmandu",
-    image: "/placeholder.svg?height=250&width=400",
-    amenities: ["Wi-Fi", "Parking", "Water", "Power"],
-    featured: false,
-  },
-  {
-    id: 3,
-    title: "Modern House in Lazimpat",
-    type: "House",
-    rent: 45000,
-    location: "Lazimpat, Kathmandu",
-    image: "/placeholder.svg?height=250&width=400",
-    amenities: ["Wi-Fi", "Parking", "Water", "Power", "Security"],
-    featured: true,
-  },
-  {
-    id: 4,
-    title: "Student Room in Chabahil",
-    type: "Room",
-    rent: 12000,
-    location: "Chabahil, Kathmandu",
-    image: "/placeholder.svg?height=250&width=400",
-    amenities: ["Wi-Fi", "Water"],
-    featured: false,
-  },
-  {
-    id: 5,
-    title: "Luxury Flat in Maharajgunj",
-    type: "Flat",
-    rent: 35000,
-    location: "Maharajgunj, Kathmandu",
-    image: "/placeholder.svg?height=250&width=400",
-    amenities: ["Wi-Fi", "Parking", "Water", "Power", "Security", "Cable TV"],
-    featured: true,
-  },
-  {
-    id: 6,
-    title: "Affordable Room in Balaju",
-    type: "Room",
-    rent: 10000,
-    location: "Balaju, Kathmandu",
-    image: "/placeholder.svg?height=250&width=400",
-    amenities: ["Wi-Fi", "Water"],
-    featured: false,
-  },
-]
+const formatPropertyType = (type?: PropertyType) => {
+  if (!type) return "Unknown"
+  return type.charAt(0) + type.slice(1).toLowerCase()
+}
+
+const formatLocation = (property: PropertyListItem) => {
+  const parts = [property.city, property.district].filter(Boolean)
+  if (parts.length) return parts.join(", ")
+  if (property.address) return property.address
+  return "Location not specified"
+}
+
+const formatRent = (rent?: number | string | null) => {
+  if (rent === null || rent === undefined) return "N/A"
+  const value = typeof rent === "string" ? Number(rent) : rent
+  if (Number.isNaN(value)) return "N/A"
+  return `Rs ${value.toLocaleString()}`
+}
+
+const getMockCoordinates = (index: number) => {
+  const baseLat = 27.7172
+  const baseLng = 85.324
+  const offset = (index % 5) * 0.01
+  return {
+    lat: baseLat + offset * (index % 2 === 0 ? 1 : -1),
+    lng: baseLng + offset * (index % 3 === 0 ? 1 : -1),
+  }
+}
 
 export default function SearchPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list" | "map">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [priceRange, setPriceRange] = useState([5000, 50000])
-  const [propertyType, setPropertyType] = useState("all")
+  const [propertyType, setPropertyType] = useState<PropertyType | "all">("all")
   const [selectedArea, setSelectedArea] = useState("all")
+  const [areas, setAreas] = useState<string[]>(defaultAreas)
+  const [properties, setProperties] = useState<PropertyListItem[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [pagination, setPagination] = useState({ page: 0, size: 0, totalElements: 0, totalPages: 0 })
 
-  const filteredListings = mockListings.filter((listing) => {
-    const matchesSearch =
-      listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      listing.location.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesType = propertyType === "all" || listing.type === propertyType
-    const matchesArea = selectedArea === "all" || listing.location.includes(selectedArea)
-    const matchesPrice = listing.rent >= priceRange[0] && listing.rent <= priceRange[1]
+  const totalResults = pagination.totalElements || properties.length
 
-    return matchesSearch && matchesType && matchesArea && matchesPrice
-  })
+  const loadCities = useCallback(async () => {
+    try {
+      const cities = await fetchCities()
+      if (cities.length) {
+        setAreas(cities)
+      }
+    } catch (err) {
+      console.warn("[Search] Failed to load cities, using defaults", err)
+      setAreas(defaultAreas)
+    }
+  }, [])
+
+  const fetchListings = useCallback(
+    async (page = 0) => {
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const data = await searchProperties({
+          page,
+          size: 9,
+          propertyType: propertyType !== "all" ? propertyType : undefined,
+          city: selectedArea !== "all" ? selectedArea : searchQuery.trim() || undefined,
+          minRent: priceRange[0],
+          maxRent: priceRange[1],
+          availableOnly: true,
+        })
+
+        setProperties(data?.content || [])
+        setPagination({
+          page: data?.page ?? 0,
+          size: data?.size ?? 0,
+          totalElements: data?.totalElements ?? data?.content?.length ?? 0,
+          totalPages: data?.totalPages ?? 0,
+        })
+      } catch (err) {
+        console.error("[Search] Failed to fetch properties", err)
+        setError("Could not load properties right now. Please try again.")
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [priceRange, propertyType, searchQuery, selectedArea]
+  )
+
+  useEffect(() => {
+    loadCities()
+    fetchListings(0)
+  }, [fetchListings, loadCities])
 
   return (
     <div className="page-shell">
@@ -151,15 +166,16 @@ export default function SearchPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Property Type</label>
-                  <Select value={propertyType} onValueChange={setPropertyType}>
+                  <Select value={propertyType} onValueChange={(value) => setPropertyType(value as PropertyType | "all")}>
                     <SelectTrigger className="h-10 sm:h-12 bg-background border-border">
                       <SelectValue placeholder="All Types" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="Room">Room</SelectItem>
-                      <SelectItem value="Flat">Flat</SelectItem>
-                      <SelectItem value="House">House</SelectItem>
+                      <SelectItem value="ROOM">Room</SelectItem>
+                      <SelectItem value="FLAT">Flat</SelectItem>
+                      <SelectItem value="HOUSE">House</SelectItem>
+                      <SelectItem value="APARTMENT">Apartment</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -172,7 +188,7 @@ export default function SearchPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Areas</SelectItem>
-                      {kathmanduAreas.map((area) => (
+                      {areas.map((area) => (
                         <SelectItem key={area} value={area}>
                           {area}
                         </SelectItem>
@@ -185,27 +201,44 @@ export default function SearchPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Budget: Rs {priceRange[0].toLocaleString()} - Rs {priceRange[1].toLocaleString()}
                   </label>
-                  <div className="px-3 pt-2">
+                  <div className="px-3 pt-2 bg-white/80 dark:bg-gray-900/70 rounded-lg border border-border">
                     <Slider
                       value={priceRange}
                       onValueChange={setPriceRange}
                       max={50000}
                       min={5000}
                       step={1000}
-                      className="w-full"
+                      className="w-full [&>[role=slider]]:border-orange-500 [&>[role=slider]]:bg-white"
                     />
                   </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white"
+                    onClick={() => fetchListings(0)}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                    Search Properties
+                  </Button>
                 </div>
               </div>
             </div>
           </Card>
         </div>
 
+        {error && (
+          <Alert variant="destructive" className="mb-4 sm:mb-6">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         {/* Results Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-4">
           <div>
             <h2 className="text-lg sm:text-xl font-semibold text-foreground">
-              {filteredListings.length} Properties Found
+              {isLoading ? "Loading properties..." : `${totalResults} Properties Found`}
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground">Results based on your search criteria</p>
           </div>
@@ -244,17 +277,12 @@ export default function SearchPage() {
             <Card className="rounded-xl shadow-sm">
               <CardContent className="p-2 sm:p-4">
                 <PropertyMap
-                  properties={filteredListings.map((listing) => ({
+                  properties={properties.map((listing, index) => ({
                     id: listing.id,
                     title: listing.title,
-                    type: listing.type,
-                    price: listing.rent,
-                    location: listing.location,
-                    coordinates: {
-                      lat: 27.7172 + (Math.random() - 0.5) * 0.1, // Mock coordinates around Kathmandu
-                      lng: 85.324 + (Math.random() - 0.5) * 0.1,
-                    },
-                    image: listing.image,
+                    price: typeof listing.monthlyRent === "string" ? Number(listing.monthlyRent) : listing.monthlyRent,
+                    location: formatLocation(listing),
+                    coordinates: getMockCoordinates(index),
                   }))}
                 />
               </CardContent>
@@ -269,82 +297,99 @@ export default function SearchPage() {
               viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6" : "space-y-4"
             }
           >
-            {filteredListings.map((listing) => (
-              <Card
-                key={listing.id}
-                className={`rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden ${
-                  viewMode === "list" ? "flex flex-col sm:flex-row" : ""
-                }`}
-              >
-                <div className={viewMode === "list" ? "sm:w-80 sm:flex-shrink-0" : ""}>
-                  <div className="relative">
-                    <img
-                      src={listing.image || "/placeholder.svg"}
-                      alt={listing.title}
-                      className={`object-cover ${viewMode === "list" ? "w-full h-48 sm:h-full" : "w-full h-48"}`}
-                    />
-                    {listing.featured && (
-                      <Badge className="absolute top-3 left-3 bg-orange-500 hover:bg-orange-600 text-white text-xs">Featured</Badge>
-                    )}
-                    <button className="absolute top-3 right-3 p-2 bg-white/80 rounded-full hover:bg-white transition-colors">
-                      <Heart className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                  </div>
-                </div>
+            {isLoading && properties.length === 0 ? (
+              <div className="col-span-full text-center text-muted-foreground py-8">
+                <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                <p>Loading properties...</p>
+              </div>
+            ) : (
+              properties.map((listing, index) => {
+                const amenities = listing.keyAmenities || []
+                const rentLabel = formatRent(listing.monthlyRent)
+                const locationLabel = formatLocation(listing)
 
-                <CardContent className={`p-3 sm:p-4 ${viewMode === "list" ? "flex-1" : ""}`}>
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-foreground text-base sm:text-lg truncate">{listing.title}</h3>
-                      <div className="flex items-center text-xs sm:text-sm text-muted-foreground mt-1">
-                        <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
-                        <span className="truncate">{listing.location}</span>
+                return (
+                  <Card
+                    key={listing.id || index}
+                    className={`rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden ${
+                      viewMode === "list" ? "flex flex-col sm:flex-row" : ""
+                    }`}
+                  >
+                    <div className={viewMode === "list" ? "sm:w-80 sm:flex-shrink-0" : ""}>
+                      <div className="relative">
+                        <img
+                          src={listing.primaryImageUrl || "/placeholder.svg"}
+                          alt={listing.title}
+                          className={`object-cover ${viewMode === "list" ? "w-full h-48 sm:h-full" : "w-full h-48"}`}
+                        />
+                        {listing.isFeatured && (
+                          <Badge className="absolute top-3 left-3 bg-orange-500 hover:bg-orange-600 text-white text-xs">
+                            Featured
+                          </Badge>
+                        )}
+                        <button className="absolute top-3 right-3 p-2 bg-white/80 rounded-full hover:bg-white transition-colors">
+                          <Heart className="h-4 w-4 text-muted-foreground" />
+                        </button>
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-orange-600 border-orange-600 ml-2 text-xs">
-                      {listing.type}
-                    </Badge>
-                  </div>
 
-                  <div className="text-xl sm:text-2xl font-bold text-orange-600 mb-3">
-                    Rs {listing.rent.toLocaleString()}
-                    <span className="text-xs sm:text-sm font-normal text-muted-foreground">/month</span>
-                  </div>
+                    <CardContent className={`p-3 sm:p-4 ${viewMode === "list" ? "flex-1" : ""}`}>
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-foreground text-base sm:text-lg truncate">
+                            {listing.title}
+                          </h3>
+                          <div className="flex items-center text-xs sm:text-sm text-muted-foreground mt-1">
+                            <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+                            <span className="truncate">{locationLabel}</span>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-orange-600 border-orange-600 ml-2 text-xs">
+                          {formatPropertyType(listing.propertyType)}
+                        </Badge>
+                      </div>
 
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {listing.amenities.slice(0, 3).map((amenity) => (
-                      <Badge key={amenity} variant="secondary" className="text-xs">
-                        {amenity}
-                      </Badge>
-                    ))}
-                    {listing.amenities.length > 3 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{listing.amenities.length - 3} more
-                      </Badge>
-                    )}
-                  </div>
+                      <div className="text-xl sm:text-2xl font-bold text-orange-600 mb-3">
+                        {rentLabel}
+                        <span className="text-xs sm:text-sm font-normal text-muted-foreground">/month</span>
+                      </div>
 
-                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                    <Link href={`/listing/${listing.id}`} className="flex-1">
-                      <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm">
-                        View Details
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-teal-600 text-teal-600 hover:bg-teal-50 bg-transparent sm:w-auto"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        {amenities.slice(0, 3).map((amenity) => (
+                          <Badge key={amenity} variant="secondary" className="text-xs">
+                            {amenity}
+                          </Badge>
+                        ))}
+                        {amenities.length > 3 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{amenities.length - 3} more
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                        <Link href={`/listing/${listing.id}`} className="flex-1">
+                          <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm">
+                            View Details
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-teal-600 text-teal-600 hover:bg-teal-50 bg-transparent sm:w-auto"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })
+            )}
           </div>
         )}
 
-        {filteredListings.length === 0 && (
+        {!isLoading && !error && properties.length === 0 && (
           <div className="text-center py-12">
             <Search className="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-2">No properties found</h3>

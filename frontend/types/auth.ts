@@ -19,6 +19,15 @@ export interface User {
   updatedAt?: string;
   avatar?: string;
   initials?: string;
+  bio?: string;
+  preferredLocation?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  preferredPropertyType?: string;
+  familySize?: number;
+  hasPets?: boolean;
+  smokingAllowed?: boolean;
+  drinkingAllowed?: boolean;
 }
 
 export interface AuthTokens {

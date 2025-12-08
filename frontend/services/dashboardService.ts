@@ -20,13 +20,22 @@ export async function fetchAdminDashboard() {
 export interface LandlordProperty {
   id: string
   title: string
-  location: string
-  status: string
-  monthlyRent: number
-  views: number
-  messages: number
+  location?: string
+  address?: string
+  city?: string
+  district?: string
+  status?: string
+  monthlyRent?: number
+  views?: number
+  viewCount?: number
+  messages?: number
+  inquiryCount?: number
+  occupancyRate?: number
   rating?: number
   totalReviews?: number
+  isAvailable?: boolean
+  primaryImageUrl?: string
+  image?: string
 }
 
 export async function fetchLandlordProperties(params: { page?: number; size?: number } = {}) {

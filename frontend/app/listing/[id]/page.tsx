@@ -31,119 +31,20 @@ import {
 import Link from "next/link"
 import { GoogleMaps } from "@/components/google-maps"
 import { Header } from "@/components/header"
-
-const mockListing = {
-  id: 1,
-  title: "Cozy Room in Thamel",
-  type: "Room",
-  rent: 15000,
-  deposit: 30000,
-  location: "Thamel, Kathmandu",
-  description:
-    "A beautiful and cozy room located in the heart of Thamel, perfect for students and working professionals. The room comes fully furnished with a comfortable bed, study desk, and wardrobe. Located just 5 minutes walk from major restaurants, cafes, and shopping areas.",
-  amenities: [
-    { id: "wifi", label: "Wi-Fi", icon: Wifi },
-    { id: "water", label: "24/7 Water", icon: Droplets },
-    { id: "security", label: "Security", icon: Shield },
-    { id: "electricity", label: "Backup Power", icon: Zap },
-    { id: "parking", label: "Parking", icon: Car },
-    { id: "tv", label: "Cable TV", icon: Tv },
-  ],
-  images: [
-    "/placeholder.svg?height=500&width=800&text=Room+View+1",
-    "/placeholder.svg?height=500&width=800&text=Room+View+2",
-    "/placeholder.svg?height=500&width=800&text=Room+View+3",
-    "/placeholder.svg?height=500&width=800&text=Room+View+4",
-    "/placeholder.svg?height=500&width=800&text=Room+View+5",
-  ],
-  landlord: {
-    name: "Ram Sharma",
-    phone: "+977 9841234567",
-    verified: true,
-    responseTime: "2 hours",
-    rating: 4.8,
-    totalReviews: 24,
-    joinedDate: "2023-05-15",
-  },
-  views: 45,
-  posted: "3 days ago",
-  rating: {
-    average: 4.6,
-    total: 18,
-    breakdown: {
-      5: 12,
-      4: 4,
-      3: 1,
-      2: 1,
-      1: 0,
-    },
-  },
-}
-
-const mockReviews = [
-  {
-    id: 1,
-    user: {
-      name: "Priya Sharma",
-      avatar: "/placeholder.svg?height=40&width=40",
-      initials: "PS",
-    },
-    rating: 5,
-    date: "2024-02-15",
-    stayDuration: "6 months",
-    review:
-      "Excellent room with all promised amenities. Ram sir is very responsive and helpful. The location is perfect for students and working professionals. Highly recommended!",
-    helpful: 8,
-    verified: true,
-  },
-  {
-    id: 2,
-    user: {
-      name: "Amit Thapa",
-      avatar: "/placeholder.svg?height=40&width=40",
-      initials: "AT",
-    },
-    rating: 4,
-    date: "2024-01-20",
-    stayDuration: "3 months",
-    review:
-      "Good room in a prime location. Wi-Fi speed could be better, but overall a decent place to stay. The landlord is cooperative and maintains the property well.",
-    helpful: 5,
-    verified: true,
-  },
-  {
-    id: 3,
-    user: {
-      name: "Sita Poudel",
-      avatar: "/placeholder.svg?height=40&width=40",
-      initials: "SP",
-    },
-    rating: 5,
-    date: "2023-12-10",
-    stayDuration: "8 months",
-    review:
-      "Stayed here for almost a year. Great experience overall. The room is clean, well-maintained, and the location is unbeatable. Would definitely recommend to others.",
-    helpful: 12,
-    verified: true,
-  },
-  {
-    id: 4,
-    user: {
-      name: "Krishna Gurung",
-      avatar: "/placeholder.svg?height=40&width=40",
-      initials: "KG",
-    },
-    rating: 3,
-    date: "2023-11-05",
-    stayDuration: "2 months",
-    review:
-      "Average experience. The room is okay but had some issues with water supply during my stay. Location is good though.",
-    helpful: 2,
-    verified: false,
-  },
-]
+import { useParams, useRouter } from "next/navigation"
+import { fetchProperty, fetchPropertyReviewSummary, fetchPropertyReviews } from "@/services/propertyService"
+import type { PropertyDetail } from "@/types/property"
+import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
+import type { ReviewSummary, Review } from "@/types/review"
 
 export default function ListingDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const propertyId = Array.isArray(params?.id) ? params.id[0] : params?.id
+  const [property, setProperty] = useState<PropertyDetail | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [showContactModal, setShowContactModal] = useState(false)
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -156,6 +57,39 @@ export default function ListingDetailPage() {
     stayDuration: "",
   })
   const [helpfulReviews, setHelpfulReviews] = useState<number[]>([])
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [reviewSummary, setReviewSummary] = useState<ReviewSummary | null>(null)
+
+  useEffect(() => {
+    const loadProperty = async () => {
+      if (!propertyId) {
+        setError("Property not found.")
+        setIsLoading(false)
+        return
+      }
+      try {
+        const data = await fetchProperty(propertyId)
+        setProperty(data)
+        setError(null)
+        setCurrentImageIndex(0)
+
+        // load reviews in parallel
+        const [summary, reviewPage] = await Promise.all([
+          fetchPropertyReviewSummary(propertyId),
+          fetchPropertyReviews(propertyId, 0, 5),
+        ])
+        setReviewSummary(summary || null)
+        setReviews(reviewPage?.content || [])
+      } catch (err: any) {
+        console.error("[Listing] Failed to load property", err)
+        setError("Unable to load this listing right now.")
+        toast.error("Could not load listing.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadProperty()
+  }, [propertyId])
 
   // Handle responsive behavior without causing re-renders
   useEffect(() => {
@@ -179,13 +113,15 @@ export default function ListingDetailPage() {
     }
   }, [])
 
+  const images = property?.images?.map((img) => img.imageUrl) ?? ["/placeholder.svg?height=500&width=800"]
+
   const nextImage = useCallback(() => {
-    setCurrentImageIndex((prev) => (prev === mockListing.images.length - 1 ? 0 : prev + 1))
-  }, [])
+    setCurrentImageIndex((prev) => (images.length ? (prev + 1) % images.length : 0))
+  }, [images.length])
 
   const prevImage = useCallback(() => {
-    setCurrentImageIndex((prev) => (prev === 0 ? mockListing.images.length - 1 : prev - 1))
-  }, [])
+    setCurrentImageIndex((prev) => (images.length ? (prev - 1 + images.length) % images.length : 0))
+  }, [images.length])
 
   const handleSendMessage = useCallback((e: React.FormEvent) => {
     e.preventDefault()
@@ -195,10 +131,11 @@ export default function ListingDetailPage() {
   }, [])
 
   const handleWhatsApp = useCallback(() => {
-    const phoneNumber = mockListing.landlord.phone.replace(/\s+/g, "")
-    const messageText = `Hi, I'm interested in your property: ${mockListing.title}`
+    if (!property?.landlord?.phone) return
+    const phoneNumber = property.landlord.phone.replace(/\s+/g, "")
+    const messageText = `Hi, I'm interested in your property: ${property.title}`
     window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(messageText)}`, "_blank")
-  }, [])
+  }, [property?.landlord?.phone, property?.title])
 
   const handleSubmitReview = useCallback(
     (e: React.FormEvent) => {
@@ -245,6 +182,57 @@ export default function ListingDetailPage() {
     )
   }
 
+  const getAmenityIcon = (label: string) => {
+    const key = label.toLowerCase()
+    if (key.includes("wifi") || key.includes("internet")) return Wifi
+    if (key.includes("water")) return Droplets
+    if (key.includes("power") || key.includes("electric")) return Zap
+    if (key.includes("security")) return Shield
+    if (key.includes("park")) return Car
+    if (key.includes("tv")) return Tv
+    return null
+  }
+
+  const locationLabel =
+    [property?.address, property?.city, property?.district].filter(Boolean).join(", ") || "Location not specified"
+  const rentValue = property?.monthlyRent ? Number(property.monthlyRent) : null
+  const depositValue = property?.securityDeposit ? Number(property.securityDeposit) : null
+  const avgRating = reviewSummary?.averageRating ?? property?.stats?.averageRating ?? 0
+  const totalReviews = reviewSummary?.totalReviews ?? property?.stats?.reviewCount ?? reviews.length
+  const views = property?.stats?.viewCount ?? 0
+  const postedDate = property?.createdAt ? new Date(property.createdAt).toLocaleDateString() : "Recently"
+  const landlord = property?.landlord
+  const amenities =
+    property?.amenities?.map((a) => ({
+      id: a.id || a.name,
+      label: a.name,
+      icon: getAmenityIcon(a.name),
+    })) || []
+
+  if (isLoading) {
+    return (
+      <div className="page-shell">
+        <Header />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-orange-500 mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading listing...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !property) {
+    return (
+      <div className="page-shell">
+        <Header />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+          <p className="text-lg font-semibold text-foreground mb-2">{error || "Listing not found"}</p>
+          <Button onClick={() => router.push("/search")}>Back to search</Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="page-shell">
       <Header />
@@ -267,8 +255,8 @@ export default function ListingDetailPage() {
             <Card className="overflow-hidden rounded-xl bg-card">
               <div className="relative">
                 <img
-                  src={mockListing.images[currentImageIndex] || "/placeholder.svg"}
-                  alt={`${mockListing.title} - Image ${currentImageIndex + 1}`}
+                  src={images[currentImageIndex] || "/placeholder.svg"}
+                  alt={`${property.title} - Image ${currentImageIndex + 1}`}
                   className="w-full h-96 object-cover"
                 />
 
@@ -288,7 +276,7 @@ export default function ListingDetailPage() {
 
                 {/* Image Counter */}
                 <div className="absolute bottom-4 right-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
-                  {currentImageIndex + 1} / {mockListing.images.length}
+                  {currentImageIndex + 1} / {images.length}
                 </div>
 
                 {/* Action Buttons */}
@@ -308,7 +296,7 @@ export default function ListingDetailPage() {
               {/* Thumbnail Strip */}
               <div className="p-4 border-t border-border bg-muted/20">
                 <div className="flex space-x-2 overflow-x-auto">
-                  {mockListing.images.map((image, index) => (
+                  {images.map((image, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
@@ -332,25 +320,27 @@ export default function ListingDetailPage() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <h1 className="text-3xl font-bold text-foreground">{mockListing.title}</h1>
+                    <h1 className="text-3xl font-bold text-foreground">{property.title}</h1>
                     <div className="flex items-center space-x-4 mt-2">
                       <div className="flex items-center text-muted-foreground">
                         <MapPin className="h-4 w-4 mr-1" />
-                        {mockListing.location}
+                        {locationLabel}
                       </div>
                       <Badge variant="outline" className="text-orange-600 border-orange-600">
-                        {mockListing.type}
+                        {property.propertyType || "Property"}
                       </Badge>
                     </div>
                     {/* Rating Display */}
                     <div className="flex items-center space-x-2 mt-3">
-                      {renderStars(mockListing.rating.average)}
-                      <span className="text-sm font-medium text-foreground">{mockListing.rating.average}</span>
-                      <span className="text-sm text-muted-foreground">({mockListing.rating.total} reviews)</span>
+                      {renderStars(avgRating)}
+                      <span className="text-sm font-medium text-foreground">{avgRating.toFixed(1)}</span>
+                      <span className="text-sm text-muted-foreground">({totalReviews} reviews)</span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-3xl font-bold text-orange-600">Rs {mockListing.rent.toLocaleString()}</div>
+                    <div className="text-3xl font-bold text-orange-600">
+                      {rentValue ? `Rs ${rentValue.toLocaleString()}` : "Rent not set"}
+                    </div>
                     <div className="text-sm text-muted-foreground">per month</div>
                   </div>
                 </div>
@@ -358,20 +348,27 @@ export default function ListingDetailPage() {
               <CardContent className="space-y-6">
                 <div>
                   <h3 className="font-semibold text-foreground mb-3 text-lg">Description</h3>
-                  <p className="text-muted-foreground leading-relaxed">{mockListing.description}</p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {property.description || "No description provided."}
+                  </p>
                 </div>
 
                 <div>
                   <h3 className="font-semibold text-foreground mb-4 text-lg">Amenities</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {mockListing.amenities.map((amenity) => {
+                    {amenities.length === 0 && <p className="text-sm text-muted-foreground">No amenities listed.</p>}
+                    {amenities.map((amenity) => {
                       const Icon = amenity.icon
                       return (
                         <div
                           key={amenity.id}
                           className="flex items-center space-x-3 p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800"
                         >
-                          <Icon className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                          {Icon ? (
+                            <Icon className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                          ) : (
+                            <Shield className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                          )}
                           <span className="text-sm font-medium text-foreground">{amenity.label}</span>
                         </div>
                       )
@@ -382,11 +379,15 @@ export default function ListingDetailPage() {
                 <div className="grid grid-cols-2 gap-6 pt-6 border-t border-border">
                   <div>
                     <div className="text-sm text-muted-foreground">Monthly Rent</div>
-                    <div className="text-2xl font-bold text-foreground">Rs {mockListing.rent.toLocaleString()}</div>
+                    <div className="text-2xl font-bold text-foreground">
+                      {rentValue ? `Rs ${rentValue.toLocaleString()}` : "Not set"}
+                    </div>
                   </div>
                   <div>
                     <div className="text-sm text-muted-foreground">Security Deposit</div>
-                    <div className="text-2xl font-bold text-foreground">Rs {mockListing.deposit.toLocaleString()}</div>
+                    <div className="text-2xl font-bold text-foreground">
+                      {depositValue ? `Rs ${depositValue.toLocaleString()}` : "Not set"}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -409,70 +410,72 @@ export default function ListingDetailPage() {
                 {/* Rating Overview */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="text-center">
-                    <div className="text-4xl font-bold text-foreground mb-2">{mockListing.rating.average}</div>
-                    {renderStars(mockListing.rating.average, "lg")}
-                    <p className="text-muted-foreground mt-2">{mockListing.rating.total} reviews</p>
+                    <div className="text-4xl font-bold text-foreground mb-2">{avgRating.toFixed(1)}</div>
+                    {renderStars(avgRating, "lg")}
+                    <p className="text-muted-foreground mt-2">{totalReviews} reviews</p>
                   </div>
                   <div className="space-y-2">
-                    {[5, 4, 3, 2, 1].map((rating) => (
-                      <div key={rating} className="flex items-center space-x-2">
-                        <span className="text-sm w-3">{rating}</span>
-                        <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                        <Progress
-                          value={
-                            (mockListing.rating.breakdown[rating as keyof typeof mockListing.rating.breakdown] /
-                              mockListing.rating.total) *
-                            100
-                          }
-                          className="flex-1 h-2"
-                        />
-                        <span className="text-sm text-muted-foreground w-8">
-                          {mockListing.rating.breakdown[rating as keyof typeof mockListing.rating.breakdown]}
-                        </span>
-                      </div>
-                    ))}
+                    {[5, 4, 3, 2, 1].map((rating) => {
+                      const count = reviewSummary?.ratingDistribution?.[rating] || 0
+                      const percent = totalReviews ? (count / totalReviews) * 100 : 0
+                      return (
+                        <div key={rating} className="flex items-center space-x-2">
+                          <span className="text-sm w-3">{rating}</span>
+                          <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                          <Progress value={percent} className="flex-1 h-2" />
+                          <span className="text-sm text-muted-foreground w-8">{count}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
 
                 {/* Individual Reviews */}
                 <div className="space-y-6">
-                  {mockReviews.map((review) => (
+                  {reviews.length === 0 && <p className="text-sm text-muted-foreground">No reviews yet.</p>}
+                  {reviews.map((review) => (
                     <div key={review.id} className="border-b border-border pb-6 last:border-b-0">
                       <div className="flex items-start space-x-4">
                         <Avatar className="w-10 h-10">
-                          <AvatarImage src={review.user.avatar || "/placeholder.svg"} alt={review.user.name} />
-                          <AvatarFallback>{review.user.initials}</AvatarFallback>
+                          <AvatarImage src={review.tenantProfileImage || "/placeholder.svg"} alt={review.tenantName} />
+                          <AvatarFallback>{(review.tenantName || "U").charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
                             <div>
                               <div className="flex items-center space-x-2">
-                                <h4 className="font-medium text-foreground">{review.user.name}</h4>
-                                {review.verified && (
+                                <h4 className="font-medium text-foreground">{review.tenantName || "Anonymous"}</h4>
+                                {review.isVerified && (
                                   <Badge className="text-xs bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800">
                                     Verified Stay
                                   </Badge>
                                 )}
                               </div>
                               <div className="flex items-center space-x-2 mt-1">
-                                {renderStars(review.rating, "sm")}
-                                <span className="text-sm text-muted-foreground">Stayed for {review.stayDuration}</span>
+                                {renderStars(review.overallRating || 0, "sm")}
+                                {review.stayDurationMonths && (
+                                  <span className="text-sm text-muted-foreground">
+                                    Stayed for {review.stayDurationMonths} months
+                                  </span>
+                                )}
                               </div>
                             </div>
-                            <div className="text-sm text-muted-foreground">{review.date}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ""}
+                            </div>
                           </div>
-                          <p className="text-foreground leading-relaxed mb-3">{review.review}</p>
+                          <p className="text-foreground leading-relaxed mb-3">{review.reviewText || review.pros || ""}</p>
                           <div className="flex items-center space-x-4">
                             <button
-                              onClick={() => handleHelpfulClick(review.id)}
+                              onClick={() => handleHelpfulClick(Number(review.id))}
                               className={`flex items-center space-x-1 text-sm ${
-                                helpfulReviews.includes(review.id)
+                                helpfulReviews.includes(review.id as any)
                                   ? "text-orange-600"
                                   : "text-muted-foreground hover:text-foreground"
                               }`}
                             >
                               <ThumbsUp className="h-4 w-4" />
-                              <span>Helpful ({review.helpful + (helpfulReviews.includes(review.id) ? 1 : 0)})</span>
+                              <span>Helpful</span>
                             </button>
                             <button className="flex items-center space-x-1 text-sm text-muted-foreground hover:text-foreground">
                               <Flag className="h-4 w-4" />
@@ -503,16 +506,24 @@ export default function ListingDetailPage() {
               </CardHeader>
               <CardContent>
                 <GoogleMaps
-                  center={{ lat: 27.7172, lng: 85.324 }}
+                  center={{
+                    lat: property.latitude || 27.7172,
+                    lng: property.longitude || 85.324,
+                  }}
                   markers={[
                     {
-                      position: { lat: 27.7172, lng: 85.324 },
-                      title: mockListing.title,
+                      position: {
+                        lat: property.latitude || 27.7172,
+                        lng: property.longitude || 85.324,
+                      },
+                      title: property.title,
                       info: `
                         <div>
-                          <h3 style="margin: 0 0 8px 0; font-weight: 600;">${mockListing.title}</h3>
-                          <p style="margin: 0 0 4px 0; color: #6b7280;">${mockListing.location}</p>
-                          <p style="margin: 0; color: #ea580c; font-weight: 600;">Rs ${mockListing.rent.toLocaleString()}/month</p>
+                          <h3 style="margin: 0 0 8px 0; font-weight: 600;">${property.title}</h3>
+                          <p style="margin: 0 0 4px 0; color: #6b7280;">${locationLabel}</p>
+                          <p style="margin: 0; color: #ea580c; font-weight: 600;">${
+                            rentValue ? `Rs ${rentValue.toLocaleString()}/month` : ""
+                          }</p>
                         </div>
                       `,
                     },
@@ -523,7 +534,7 @@ export default function ListingDetailPage() {
                 <div className="mt-4 p-3 bg-muted/20 rounded-lg">
                   <p className="text-sm text-muted-foreground">
                     <MapPin className="h-4 w-4 inline mr-1" />
-                    {mockListing.location}
+                    {locationLabel}
                   </p>
                 </div>
               </CardContent>
@@ -540,21 +551,18 @@ export default function ListingDetailPage() {
               <CardContent className="space-y-4">
                 <div className="flex items-center space-x-3">
                   <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                    {mockListing.landlord.name.charAt(0)}
+                    {(landlord?.fullName || landlord?.email || "U").charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <div className="font-semibold text-foreground flex items-center space-x-2">
-                      <span>{mockListing.landlord.name}</span>
-                      {mockListing.landlord.verified && (
+                      <span>{landlord?.fullName || landlord?.email || "Landlord"}</span>
+                      {landlord?.isVerified && (
                         <Badge className="text-xs bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800">Verified</Badge>
                       )}
                     </div>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      {renderStars(mockListing.landlord.rating, "sm")}
-                      <span>{mockListing.landlord.rating}</span>
-                      <span>({mockListing.landlord.totalReviews} reviews)</span>
+                    <div className="text-sm text-muted-foreground">
+                      Contact: {landlord?.phone || landlord?.email || "Not provided"}
                     </div>
-                    <div className="text-sm text-muted-foreground">Responds in {mockListing.landlord.responseTime}</div>
                   </div>
                 </div>
 
@@ -582,10 +590,10 @@ export default function ListingDetailPage() {
                 <div className="text-xs text-muted-foreground text-center pt-3 border-t border-border">
                   <div className="flex items-center justify-center space-x-1 mb-1">
                     <Calendar className="h-3 w-3" />
-                    <span>Joined {mockListing.landlord.joinedDate}</span>
+                    <span>Joined {postedDate}</span>
                   </div>
                   <div>
-                    Posted {mockListing.posted} • {mockListing.views} views
+                    Posted {postedDate} • {views} views
                   </div>
                 </div>
               </CardContent>
@@ -615,11 +623,13 @@ export default function ListingDetailPage() {
 
       {/* Contact Modal */}
       {showContactModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md rounded-xl bg-card">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-md supports-[backdrop-filter]:bg-black/20">
+          <Card className="w-full max-w-md rounded-xl bg-card shadow-2xl">
             <CardHeader>
               <CardTitle>Send Message</CardTitle>
-              <p className="text-muted-foreground">Contact {mockListing.landlord.name} about this property</p>
+              <p className="text-muted-foreground">
+                Contact {landlord?.fullName || landlord?.email || "the landlord"} about this property
+              </p>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSendMessage} className="space-y-4">

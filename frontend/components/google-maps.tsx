@@ -8,8 +8,7 @@ import { MapPin, Search, Navigation } from "lucide-react"
 
 declare global {
   interface Window {
-    google: any
-    initMap: () => void
+    L: any
   }
 }
 
@@ -29,6 +28,7 @@ interface GoogleMapsProps {
   className?: string
 }
 
+// OpenStreetMap + Leaflet implementation, exported with the same name for drop-in replacement.
 export function GoogleMaps({
   center = { lat: 27.7172, lng: 85.324 }, // Kathmandu center
   zoom = 13,
@@ -45,197 +45,150 @@ export function GoogleMaps({
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number; address: string } | null>(null)
   const markersRef = useRef<any[]>([])
-  const infoWindowRef = useRef<any>(null)
 
-  // Load Google Maps API
+  // Load Leaflet assets from CDN once on the client
   useEffect(() => {
-    if (window.google) {
+    if (typeof window === "undefined") return
+    if (window.L) {
       setIsLoaded(true)
       return
     }
 
-    const script = document.createElement("script")
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap`
-    script.async = true
-    script.defer = true
-
-    window.initMap = () => {
-      setIsLoaded(true)
+    const existingCss = document.getElementById("leaflet-css")
+    if (!existingCss) {
+      const link = document.createElement("link")
+      link.id = "leaflet-css"
+      link.rel = "stylesheet"
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      link.crossOrigin = ""
+      document.head.appendChild(link)
     }
 
+    const script = document.createElement("script")
+    script.id = "leaflet-js"
+    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    script.async = true
+    script.onload = () => setIsLoaded(true)
+    script.onerror = () => setIsLoaded(false)
     document.head.appendChild(script)
 
     return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script)
-      }
+      // Keep assets for subsequent mounts; no cleanup to avoid flicker
     }
   }, [])
 
   // Initialize map
   useEffect(() => {
     if (!isLoaded || !mapRef.current || map) return
+    if (!window.L) return
 
-    const googleMap = new window.google.maps.Map(mapRef.current, {
-      center,
-      zoom,
-      styles: [
-        {
-          featureType: "poi",
-          elementType: "labels",
-          stylers: [{ visibility: "off" }],
-        },
-      ],
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-      zoomControl: true,
-      zoomControlOptions: {
-        position: window.google.maps.ControlPosition.RIGHT_BOTTOM,
-      },
-    })
+    const leaflet = window.L
+    const mapInstance = leaflet.map(mapRef.current).setView([center.lat, center.lng], zoom)
 
-    setMap(googleMap)
+    leaflet
+      .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      })
+      .addTo(mapInstance)
 
-    // Add click listener for location selection
+    // Disable scroll zoom on mobile-esque experiences but keep pinch/drag
+    mapInstance.scrollWheelZoom.enable()
+    setMap(mapInstance)
+
     if (clickToSelect) {
-      googleMap.addListener("click", (event: any) => {
-        const lat = event.latLng.lat()
-        const lng = event.latLng.lng()
-
-        // Reverse geocoding to get address
-        const geocoder = new window.google.maps.Geocoder()
-        geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
-          if (status === "OK" && results[0]) {
-            const address = results[0].formatted_address
-            setSelectedLocation({ lat, lng, address })
-            onLocationSelect?.({ lat, lng, address })
-
-            // Clear existing markers
-            markersRef.current.forEach((marker) => marker.setMap(null))
-            markersRef.current = []
-
-            // Add new marker
-            const marker = new window.google.maps.Marker({
-              position: { lat, lng },
-              map: googleMap,
-              title: "Selected Location",
-              icon: {
-                url:
-                  "data:image/svg+xml;charset=UTF-8," +
-                  encodeURIComponent(`
-                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M16 2C11.6 2 8 5.6 8 10C8 16 16 30 16 30S24 16 24 10C24 5.6 20.4 2 16 2ZM16 13C14.3 13 13 11.7 13 10S14.3 7 16 7S19 8.3 19 10S17.7 13 16 13Z" fill="#2563eb"/>
-                  </svg>
-                `),
-                scaledSize: new window.google.maps.Size(32, 32),
-              },
-            })
-
-            markersRef.current.push(marker)
-          }
-        })
+      mapInstance.on("click", async (event: any) => {
+        const { lat, lng } = event.latlng
+        const address = await reverseGeocode(lat, lng)
+        setSelectedLocation({ lat, lng, address })
+        onLocationSelect?.({ lat, lng, address })
+        addSelectionMarker(mapInstance, lat, lng, "Selected Location")
       })
     }
+  }, [isLoaded, center.lat, center.lng, zoom, clickToSelect, onLocationSelect, map])
 
-    // Create info window
-    infoWindowRef.current = new window.google.maps.InfoWindow()
-  }, [isLoaded, center, zoom, clickToSelect, onLocationSelect, map])
-
-  // Add markers
+  // Update markers from props
   useEffect(() => {
-    if (!map || !isLoaded) return
+    if (!map || !isLoaded || !window.L) return
+    const leaflet = window.L
 
-    // Clear existing markers
-    markersRef.current.forEach((marker) => marker.setMap(null))
+    markersRef.current.forEach((m) => m.remove())
     markersRef.current = []
 
-    // Add new markers
     markers.forEach((markerData) => {
-      const marker = new window.google.maps.Marker({
-        position: markerData.position,
-        map,
-        title: markerData.title,
-        icon: {
-          url:
-            "data:image/svg+xml;charset=UTF-8," +
-            encodeURIComponent(`
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M16 2C11.6 2 8 5.6 8 10C8 16 16 30 16 30S24 16 24 10C24 5.6 20.4 2 16 2ZM16 13C14.3 13 13 11.7 13 10S14.3 7 16 7S19 8.3 19 10S17.7 13 16 13Z" fill="#dc2626"/>
-            </svg>
-          `),
-          scaledSize: new window.google.maps.Size(32, 32),
-        },
-      })
+      const marker = leaflet
+        .marker([markerData.position.lat, markerData.position.lng], {
+          title: markerData.title,
+        })
+        .addTo(map)
 
       if (markerData.info) {
-        marker.addListener("click", () => {
-          infoWindowRef.current.setContent(`
-            <div style="padding: 8px; max-width: 250px;">
-              <h3 style="margin: 0 0 8px 0; font-weight: 600; color: #1f2937; font-size: 14px;">${markerData.title}</h3>
-              <p style="margin: 0; color: #6b7280; font-size: 12px; line-height: 1.4;">${markerData.info}</p>
-            </div>
-          `)
-          infoWindowRef.current.open(map, marker)
-          markerData.onClick?.()
-        })
+        marker.bindPopup(
+          `<div style="padding:6px;max-width:220px"><strong>${markerData.title}</strong><div style="color:#6b7280;font-size:12px;margin-top:4px;">${markerData.info}</div></div>`
+        )
+      }
+
+      if (markerData.onClick) {
+        marker.on("click", markerData.onClick)
       }
 
       markersRef.current.push(marker)
     })
   }, [map, markers, isLoaded])
 
-  // Search functionality
-  const handleSearch = () => {
+  const addSelectionMarker = (mapInstance: any, lat: number, lng: number, title: string) => {
+    if (!window.L) return
+    const leaflet = window.L
+
+    markersRef.current.forEach((m) => m.remove())
+    markersRef.current = []
+
+    const marker = leaflet
+      .marker([lat, lng], {
+        title,
+      })
+      .addTo(mapInstance)
+
+    markersRef.current.push(marker)
+  }
+
+  // Simple search via Nominatim (OSM). Keep it lightweight and fail-safe.
+  const handleSearch = async () => {
     if (!map || !searchQuery.trim()) return
 
-    const service = new window.google.maps.places.PlacesService(map)
-    const request = {
-      query: `${searchQuery} Kathmandu Nepal`,
-      fields: ["name", "geometry", "formatted_address"],
-    }
-
-    service.textSearch(request, (results: any, status: any) => {
-      if (status === window.google.maps.places.PlacesServiceStatus.OK && results[0]) {
-        const place = results[0]
-        const location = place.geometry.location
-
-        map.setCenter(location)
-        map.setZoom(15)
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
+      )
+      const results = await response.json()
+      if (Array.isArray(results) && results[0]) {
+        const lat = parseFloat(results[0].lat)
+        const lng = parseFloat(results[0].lon)
+        map.setView([lat, lng], 15)
 
         if (clickToSelect) {
-          const lat = location.lat()
-          const lng = location.lng()
-          const address = place.formatted_address
-
+          const address = results[0].display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`
           setSelectedLocation({ lat, lng, address })
           onLocationSelect?.({ lat, lng, address })
-
-          // Clear existing markers
-          markersRef.current.forEach((marker) => marker.setMap(null))
-          markersRef.current = []
-
-          // Add new marker
-          const marker = new window.google.maps.Marker({
-            position: { lat, lng },
-            map,
-            title: place.name,
-            icon: {
-              url:
-                "data:image/svg+xml;charset=UTF-8," +
-                encodeURIComponent(`
-                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M16 2C11.6 2 8 5.6 8 10C8 16 16 30 16 30S24 16 24 10C24 5.6 20.4 2 16 2ZM16 13C14.3 13 13 11.7 13 10S14.3 7 16 7S19 8.3 19 10S17.7 13 16 13Z" fill="#2563eb"/>
-                </svg>
-              `),
-              scaledSize: new window.google.maps.Size(32, 32),
-            },
-          })
-
-          markersRef.current.push(marker)
+          addSelectionMarker(map, lat, lng, "Selected Location")
         }
       }
-    })
+    } catch (error) {
+      console.error("[Map] Search failed", error)
+    }
+  }
+
+  const reverseGeocode = async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+      )
+      const data = await response.json()
+      return data?.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+    } catch (error) {
+      console.warn("[Map] Reverse geocode failed", error)
+      return `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+    }
   }
 
   const getCurrentLocation = () => {
@@ -245,47 +198,18 @@ export function GoogleMaps({
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const lat = position.coords.latitude
         const lng = position.coords.longitude
 
         if (map) {
-          map.setCenter({ lat, lng })
-          map.setZoom(15)
+          map.setView([lat, lng], 15)
 
           if (clickToSelect) {
-            // Reverse geocoding to get address
-            const geocoder = new window.google.maps.Geocoder()
-            geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
-              if (status === "OK" && results[0]) {
-                const address = results[0].formatted_address
-                setSelectedLocation({ lat, lng, address })
-                onLocationSelect?.({ lat, lng, address })
-
-                // Clear existing markers
-                markersRef.current.forEach((marker) => marker.setMap(null))
-                markersRef.current = []
-
-                // Add new marker
-                const marker = new window.google.maps.Marker({
-                  position: { lat, lng },
-                  map,
-                  title: "Current Location",
-                  icon: {
-                    url:
-                      "data:image/svg+xml;charset=UTF-8," +
-                      encodeURIComponent(`
-                      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M16 2C11.6 2 8 5.6 8 10C8 16 16 30 16 30S24 16 24 10C24 5.6 20.4 2 16 2ZM16 13C14.3 13 13 11.7 13 10S14.3 7 16 7S19 8.3 19 10S17.7 13 16 13Z" fill="#16a34a"/>
-                      </svg>
-                    `),
-                    scaledSize: new window.google.maps.Size(32, 32),
-                  },
-                })
-
-                markersRef.current.push(marker)
-              }
-            })
+            const address = await reverseGeocode(lat, lng)
+            setSelectedLocation({ lat, lng, address })
+            onLocationSelect?.({ lat, lng, address })
+            addSelectionMarker(map, lat, lng, "Current Location")
           }
         }
       },
@@ -304,7 +228,7 @@ export function GoogleMaps({
       >
         <div className="text-center p-4">
           <MapPin className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-2" />
-          <p className="text-gray-600 font-medium text-sm sm:text-base">Loading Google Maps...</p>
+          <p className="text-gray-600 font-medium text-sm sm:text-base">Loading map...</p>
         </div>
       </div>
     )
@@ -318,10 +242,10 @@ export function GoogleMaps({
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Search for a location in Kathmandu..."
+                placeholder="Search for a location..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 className="pl-10 text-sm sm:text-base"
               />
             </div>
