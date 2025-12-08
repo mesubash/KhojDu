@@ -794,10 +794,20 @@ export default function ListingDetailPage() {
                   />
                 </div>
                 <div className="flex space-x-3">
-                  <Button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white">
-                    Submit Review
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                    disabled={submittingReview}
+                  >
+                    {submittingReview ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Sending...
+                      </span>
+                    ) : (
+                      "Submit Review"
+                    )}
                   </Button>
-                  <Button type="button" variant="outline" onClick={() => setShowReviewModal(false)}>
+                  <Button type="button" variant="outline" onClick={() => setShowReviewModal(false)} disabled={submittingReview}>
                     Cancel
                   </Button>
                 </div>

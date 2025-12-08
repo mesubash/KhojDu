@@ -20,6 +20,9 @@ import type { PropertyType } from "@/types/property"
 import { toast } from "sonner"
 import { fetchWishlist, type WishlistItem } from "@/services/dashboardService"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { fetchMyReviews } from "@/services/propertyService"
+import type { Review } from "@/types/review"
+import { format } from "date-fns"
 
 const defaultUser: User = {
   id: "",
@@ -62,6 +65,8 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<User>(defaultUser)
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([])
   const [wishlistLoading, setWishlistLoading] = useState(false)
+  const [myReviews, setMyReviews] = useState<Review[]>([])
+  const [reviewsLoading, setReviewsLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -132,6 +137,24 @@ export default function ProfilePage() {
       }
     }
     loadWishlist()
+  }, [activeTab])
+
+  // Load reviews when reviews tab is viewed
+  useEffect(() => {
+    const loadReviews = async () => {
+      if (activeTab !== "reviews") return
+      setReviewsLoading(true)
+      try {
+        const resp = await fetchMyReviews(0, 20)
+        setMyReviews(resp?.content || [])
+      } catch (err) {
+        console.error("[Profile] Failed to load reviews", err)
+        toast.error("Could not load your reviews.")
+      } finally {
+        setReviewsLoading(false)
+      }
+    }
+    loadReviews()
   }, [activeTab])
 
   const handleInputChange = (field: string, value: string) => {
@@ -475,38 +498,32 @@ export default function ProfilePage() {
                 <p className="text-muted-foreground">Reviews you've written for properties</p>
               </CardHeader>
               <CardContent>
+                {reviewsLoading && <p className="text-sm text-muted-foreground">Loading your reviews...</p>}
+                {!reviewsLoading && myReviews.length === 0 && (
+                  <p className="text-sm text-muted-foreground">You haven't written any reviews yet.</p>
+                )}
                 <div className="space-y-6">
-                  {mockReviews.map((review) => (
+                  {myReviews.map((review) => (
                     <div key={review.id} className="border-b border-border pb-6 last:border-b-0">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h3 className="font-semibold text-foreground">{review.propertyTitle}</h3>
-                          <p className="text-sm text-muted-foreground">Landlord: {review.landlord}</p>
+                          <h3 className="font-semibold text-foreground">{review.propertyTitle || "Property"}</h3>
                           <div className="flex items-center space-x-2 mt-1">
-                            {renderStars(review.rating)}
-                            <span className="text-sm text-muted-foreground">Stayed for {review.stayDuration}</span>
+                            {renderStars(review.overallRating || 0)}
+                            {review.stayDurationMonths && (
+                              <span className="text-sm text-muted-foreground">
+                                Stayed for {review.stayDurationMonths} months
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <div className="text-sm text-muted-foreground">{review.date}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {review.createdAt ? format(new Date(review.createdAt), "MMM dd, yyyy") : ""}
+                        </div>
                       </div>
-                      <p className="text-foreground leading-relaxed mb-3">{review.review}</p>
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-orange-600 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/20 bg-transparent"
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 bg-transparent"
-                        >
-                          Delete
-                        </Button>
-                      </div>
+                      {review.reviewText && <p className="text-foreground leading-relaxed mb-3">{review.reviewText}</p>}
+                      {review.pros && <p className="text-sm text-green-600">Pros: {review.pros}</p>}
+                      {review.cons && <p className="text-sm text-red-600">Cons: {review.cons}</p>}
                     </div>
                   ))}
                 </div>

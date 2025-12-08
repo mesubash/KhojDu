@@ -124,3 +124,12 @@ export async function submitReview(propertyId: string, payload: { rating: number
   invalidate(`reviews-${propertyId}-0-10`)
   return data.data
 }
+
+export async function fetchMyReviews(page = 0, size = 10) {
+  const cacheKey = `my-reviews-${page}-${size}`
+  const cached = getCached<PagedResponse<Review>>(cacheKey)
+  if (cached) return cached
+  const { data } = await axiosInstance.get<ApiResponse<PagedResponse<Review>>>(`/reviews/me?page=${page}&size=${size}`)
+  setCached(cacheKey, data.data, 30_000)
+  return data.data
+}
