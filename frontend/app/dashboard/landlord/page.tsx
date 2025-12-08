@@ -41,7 +41,12 @@ export default function LandlordDashboard() {
   const [isFetching, setIsFetching] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [isMutating, setIsMutating] = useState<string | null>(null)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const handleLogout = async () => {
+    if (!showLogoutConfirm) {
+      setShowLogoutConfirm(true)
+      return
+    }
     try {
       await logout()
       router.replace("/auth/login")
@@ -280,15 +285,41 @@ export default function LandlordDashboard() {
               </button>
 
               <button
-                onClick={handleLogout}
-                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                onClick={() => setShowLogoutConfirm(true)}
+                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
               >
-                <LogOut className="h-5 w-5" />
-                <span>Logout</span>
+                <LogOut className="h-5 w-5 text-red-600" />
+                <span className="text-red-600 font-medium">Logout</span>
               </button>
             </nav>
           </div>
         </div>
+
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-border max-w-sm w-full p-6 space-y-4">
+              <div className="flex items-start space-x-3">
+                <div className="h-10 w-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                  <LogOut className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-foreground">Log out?</h3>
+                  <p className="text-sm text-muted-foreground">
+                    You will need to sign in again to access your landlord dashboard.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setShowLogoutConfirm(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleLogout}>
+                  Log out
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main Content */}
         <div className="flex-1 lg:ml-0">

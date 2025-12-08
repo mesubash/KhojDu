@@ -27,13 +27,16 @@ export function Header({ hideNavigation = false }: HeaderProps) {
   // const { t } = useTranslation()
   const { user, isAuthenticated, logout } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const pathname = usePathname()
 
-  const handleLogout = async () => {
+  const confirmLogout = async () => {
     try {
       await logout()
     } catch (error) {
       console.error("Logout error:", error)
+    } finally {
+      setShowLogoutConfirm(false)
     }
   }
 
@@ -176,8 +179,11 @@ export function Header({ hideNavigation = false }: HeaderProps) {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
+                    <DropdownMenuItem
+                      onClick={() => setShowLogoutConfirm(true)}
+                      className="text-red-600 focus:text-red-700"
+                    >
+                      <LogOut className="mr-2 h-4 w-4 text-red-600" />
                       Log out
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -346,5 +352,32 @@ export function Header({ hideNavigation = false }: HeaderProps) {
         )}
       </div>
     </header>
+
+    {/* Logout confirmation modal */}
+    {showLogoutConfirm && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-border max-w-sm w-full p-6 space-y-4">
+          <div className="flex items-start space-x-3">
+            <div className="h-10 w-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+              <LogOut className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-foreground">Log out?</h3>
+              <p className="text-sm text-muted-foreground">
+                You will need to sign in again to access your dashboard.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowLogoutConfirm(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmLogout}>
+              Log out
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
   )
 }
