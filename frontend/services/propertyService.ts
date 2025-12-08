@@ -68,12 +68,23 @@ export async function fetchLandlordProperty(id: string): Promise<PropertyDetail>
 }
 
 export async function uploadPropertyImages(id: string, files: File[]) {
-  const formData = new FormData()
-  files.forEach((file) => formData.append("images", file))
-  const { data } = await axiosInstance.post<ApiResponse<string[]>>(`/properties/${id}/images`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  })
-  return data.data
+  // Upload in smaller batches to avoid large payload timeouts
+  const uploaded: string[] = []
+  const chunkSize = 1
+  for (let i = 0; i < files.length; i += chunkSize) {
+    const formData = new FormData()
+    files.slice(i, i + chunkSize).forEach((file) => formData.append("images", file))
+    const { data } = await axiosInstance.post<ApiResponse<string[]>>(`/properties/${id}/images`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 120000, // extend for large uploads
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+    })
+    if (data.data) {
+      uploaded.push(...data.data)
+    }
+  }
+  return uploaded
 }
 
 export async function fetchAmenities(): Promise<Amenity[]> {

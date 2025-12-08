@@ -85,9 +85,9 @@ export default function TenantDashboard() {
                 </Link>
               </Button>
               <Button className="bg-orange-500 hover:bg-orange-600 text-white" asChild>
-                <Link href="/messages">
-                  <MessageSquare className="h-4 w-4 mr-2" /> Messages
-                </Link>
+                <button type="button" disabled className="flex items-center">
+                  <MessageSquare className="h-4 w-4 mr-2" /> Messages (disabled)
+                </button>
               </Button>
             </div>
           </div>

@@ -254,7 +254,11 @@ export default function CreateListingPage() {
       router.replace("/dashboard/landlord")
     } catch (err: any) {
       console.error("[Create Listing] Failed to create property", err)
-      toast.error(err?.response?.data?.message || "Could not save the property. Please try again.")
+      const msg =
+        err?.code === "ECONNABORTED"
+          ? "Image upload is taking too long. Try fewer/smaller images."
+          : err?.response?.data?.message || "Could not save the property. Please try again."
+      toast.error(msg)
     } finally {
       setIsSubmitting(false)
     }

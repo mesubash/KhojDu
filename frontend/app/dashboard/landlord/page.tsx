@@ -465,6 +465,7 @@ export default function LandlordDashboard() {
                             <img
                               src={listing.image || listing.primaryImageUrl || "/placeholder.svg"}
                               alt={listing.title}
+                              loading="lazy"
                               className="w-full lg:w-48 h-32 object-cover rounded-lg"
                             />
 
@@ -624,35 +625,11 @@ export default function LandlordDashboard() {
             {activeTab === "messages" && (
               <div>
                 <h1 className="text-3xl font-bold text-foreground mb-8">Messages</h1>
-                <Card className="rounded-xl shadow-sm">
+                <Card className="rounded-xl shadow-sm border-dashed border-orange-300 bg-orange-50 dark:bg-orange-950/10">
                   <CardHeader>
-                    <CardTitle className="text-xl">Recent Conversations</CardTitle>
-                    <p className="text-muted-foreground">Messages from potential and current tenants</p>
+                    <CardTitle className="text-xl">Messaging unavailable</CardTitle>
+                    <p className="text-muted-foreground">Messaging is temporarily disabled across the platform.</p>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <div
-                          key={i}
-                          className="flex items-center space-x-4 p-4 border border-border rounded-lg hover:bg-muted/50 cursor-pointer dark:hover:bg-muted/20"
-                        >
-                          <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                            U{i}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-medium text-foreground">User {i}</h4>
-                              <span className="text-sm text-muted-foreground">2h ago</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground truncate">
-                              Interested in your {i === 1 ? "Thamel" : i === 2 ? "Baneshwor" : "Dhulikhel"} property...
-                            </p>
-                          </div>
-                          <Badge className="bg-red-100 text-red-800 text-xs">New</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
                 </Card>
               </div>
             )}

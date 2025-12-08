@@ -128,7 +128,7 @@ public class PropertyMapper {
         response.setCreatedAt(property.getCreatedAt());
 
         // Primary image
-        propertyImageRepository.findPrimaryImageByProperty(property)
+        propertyImageRepository.findFirstByPropertyAndIsPrimaryTrueOrderByDisplayOrderAsc(property)
                 .ifPresent(img -> response.setPrimaryImageUrl(img.getImageUrl()));
 
         // Landlord info

@@ -21,6 +21,7 @@ export default function ContactPage() {
     subject: "",
     message: "",
   })
+  const messagingDisabled = true
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -133,7 +134,7 @@ export default function ContactPage() {
                 <p className="text-muted-foreground">Fill out the form below and we'll get back to you as soon as possible.</p>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6 relative">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <Label htmlFor="name" className="text-sm font-medium text-foreground">
@@ -216,9 +217,21 @@ export default function ContactPage() {
                     />
                   </div>
 
-                  <Button type="submit" className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg py-3">
-                    Send Message
+                  <Button
+                    type="submit"
+                    disabled={messagingDisabled}
+                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg py-3 disabled:opacity-60"
+                  >
+                    {messagingDisabled ? "Messaging unavailable" : "Send Message"}
                   </Button>
+                  {messagingDisabled && (
+                    <p className="text-sm text-muted-foreground text-center">
+                      Messaging is temporarily disabled. Please reach us via phone.
+                    </p>
+                  )}
+                  {messagingDisabled && (
+                    <div className="absolute inset-0 rounded-xl bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm pointer-events-none" />
+                  )}
                 </form>
               </CardContent>
             </Card>

@@ -18,8 +18,7 @@ public interface PropertyImageRepository extends JpaRepository<PropertyImage, UU
 
     Optional<PropertyImage> findByPropertyAndIsPrimary(Property property, Boolean isPrimary);
 
-    @Query("SELECT pi FROM PropertyImage pi WHERE pi.property = :property AND pi.isPrimary = true")
-    Optional<PropertyImage> findPrimaryImageByProperty(@Param("property") Property property);
+    Optional<PropertyImage> findFirstByPropertyAndIsPrimaryTrueOrderByDisplayOrderAsc(Property property);
 
     @Query("SELECT COUNT(pi) FROM PropertyImage pi WHERE pi.property = :property")
     Long countByProperty(@Param("property") Property property);

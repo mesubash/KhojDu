@@ -81,6 +81,7 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [showConversationList, setShowConversationList] = useState(true)
+  const messagingDisabled = true
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault()
@@ -98,6 +99,25 @@ export default function MessagesPage() {
   const selectConversation = (conversation: (typeof mockConversations)[0]) => {
     setSelectedConversation(conversation)
     setShowConversationList(false)
+  }
+
+  if (messagingDisabled) {
+    return (
+      <div className="page-shell">
+        <Header />
+        <div className="max-w-3xl mx-auto px-4 py-16">
+          <Card className="rounded-2xl border-dashed border-orange-300 bg-orange-50 dark:bg-orange-950/10">
+            <CardHeader>
+              <CardTitle>Messaging unavailable</CardTitle>
+            </CardHeader>
+            <CardContent className="text-muted-foreground">
+              Messaging is temporarily disabled across the platform. Please reach out via phone or other channels for
+              now.
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
