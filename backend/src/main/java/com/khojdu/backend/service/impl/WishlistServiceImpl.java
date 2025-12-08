@@ -44,6 +44,16 @@ public class WishlistServiceImpl implements WishlistService {
         throw new ResourceNotFoundException("User not found");
     }
 
+    private Optional<User> tryResolveUser(String identifier) {
+        Optional<User> byEmail = userRepository.findByEmail(identifier);
+        if (byEmail.isPresent()) return byEmail;
+        try {
+            return userRepository.findById(UUID.fromString(identifier));
+        } catch (IllegalArgumentException ignored) {
+            return Optional.empty();
+        }
+    }
+
     @Override
     @Transactional
     public void addToWishlist(String userEmail, UUID propertyId) {
@@ -118,8 +128,12 @@ public class WishlistServiceImpl implements WishlistService {
     @Override
     @Transactional(readOnly = true)
     public boolean isInWishlist(String userEmail, UUID propertyId) {
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        Optional<User> maybeUser = tryResolveUser(userEmail);
+        if (maybeUser.isEmpty()) {
+            log.warn("User {} not found while checking wishlist; returning false", userEmail);
+            return false;
+        }
+        User user = maybeUser.get();
 
         return user.getWishlistProperties() != null &&
                 user.getWishlistProperties().stream()

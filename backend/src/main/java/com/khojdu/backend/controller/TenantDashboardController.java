@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -53,15 +54,18 @@ public class TenantDashboardController {
     @GetMapping
     @PreAuthorize("hasRole('TENANT') or hasRole('ADMIN')")
     @Operation(summary = "Get tenant dashboard summary", description = "Returns wishlist count, inquiry count, and recent items")
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<TenantDashboardResponse>> getDashboard(Principal principal) {
         User user = resolveUser(principal.getName());
 
-        long wishlistCount = user.getWishlistProperties() != null ? user.getWishlistProperties().size() : 0;
+        // initialize wishlist to avoid LazyInitializationException
         List<PropertyListResponse> recentWishlist = (user.getWishlistProperties() == null ? List.<PropertyListResponse>of() :
                 user.getWishlistProperties().stream()
                         .limit(5)
                         .map(propertyMapper::toPropertyListResponse)
                         .collect(Collectors.toList()));
+
+        long wishlistCount = user.getWishlistProperties() != null ? user.getWishlistProperties().size() : 0;
 
         var pageRequest = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "createdAt"));
         var inquiryPage = inquiryRepository.findByTenant(user, pageRequest);

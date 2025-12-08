@@ -215,15 +215,21 @@ export default function ListingDetailPage() {
       icon: getAmenityIcon(a.name),
     })) || []
   const loadWishlistStatus = useCallback(async () => {
-    if (!propertyId || !isAuthenticated) return
+    if (!propertyId) return
     try {
       const inList = await checkWishlist(propertyId)
       setIsInWishlist(Boolean(inList))
       setIsLiked(Boolean(inList))
-    } catch (err) {
-      console.warn("[Listing] Failed to check wishlist", err)
+    } catch (err: any) {
+      const status = err?.response?.status
+      if (status && status !== 401 && status !== 403 && status !== 404) {
+        console.warn("[Listing] Failed to check wishlist", err)
+      }
+      // Treat 404/unauthorized as not in wishlist
+      setIsInWishlist(false)
+      setIsLiked(false)
     }
-  }, [isAuthenticated, propertyId])
+  }, [propertyId])
 
   useEffect(() => {
     loadWishlistStatus()
