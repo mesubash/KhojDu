@@ -10,7 +10,7 @@ import Link from "next/link"
 import { Search, MapPin, Shield, Clock, Users, Star, Bed, Bath, Square } from "lucide-react"
 import Image from "next/image"
 import { useEffect, useState } from "react"
-import { searchProperties } from "@/services/propertyService"
+import { searchProperties, fetchFeaturedProperties } from "@/services/propertyService"
 import type { PropertyListItem } from "@/types/property"
 import { toast } from "sonner"
 
@@ -45,8 +45,8 @@ export default function HomePage() {
     const loadFeatured = async () => {
       setLoading(true)
       try {
-        const resp = await searchProperties({ page: 0, size: 6, availableOnly: true, sortBy: "createdAt", sortDirection: "DESC" })
-        setFeaturedProperties(resp?.content || [])
+        const resp = await fetchFeaturedProperties(6)
+        setFeaturedProperties(resp || [])
       } catch (err) {
         console.error("[Home] Failed to load featured properties", err)
         toast.error("Could not load featured properties right now.")

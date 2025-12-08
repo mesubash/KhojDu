@@ -43,5 +43,13 @@ public class SearchController {
                 "Kathmandu", "Lalitpur", "Bhaktapur", "Pokhara", "Biratnagar"
         )));
     }
-}
 
+    @GetMapping("/featured")
+    @Operation(summary = "Get featured properties", description = "Public endpoint to fetch limited featured properties")
+    public ResponseEntity<ApiResponse<java.util.List<PropertyListResponse>>> getFeatured(
+            @RequestParam(defaultValue = "6") int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 20);
+        var properties = searchService.getFeaturedProperties(safeLimit);
+        return ResponseEntity.ok(ApiResponse.success(properties));
+    }
+}

@@ -107,6 +107,17 @@ public class SearchServiceImpl implements SearchService {
         return PaginationUtil.createPagedResponse(propertyPage, properties);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<PropertyListResponse> getFeaturedProperties(int limit) {
+        Pageable pageable = PaginationUtil.createPageable(0, limit, "createdAt", "DESC");
+        Page<Property> featuredPage = propertyRepository.findFeaturedProperties(pageable);
+        return featuredPage.getContent()
+                .stream()
+                .map(propertyMapper::toPropertyListResponse)
+                .collect(Collectors.toList());
+    }
+
     private boolean matchesCriteria(Property property, PropertySearchRequest request) {
         if (request.getPropertyType() != null && !property.getPropertyType().equals(request.getPropertyType())) {
             return false;

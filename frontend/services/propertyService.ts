@@ -45,6 +45,16 @@ export async function fetchCities(): Promise<string[]> {
   return data.data || []
 }
 
+// Public featured properties (no auth required)
+export async function fetchFeaturedProperties(limit = 6): Promise<PropertyListItem[]> {
+  const cacheKey = `featured-${limit}`
+  const cached = getCached<PropertyListItem[]>(cacheKey)
+  if (cached) return cached
+  const { data } = await axiosInstance.get<ApiResponse<PropertyListItem[]>>(`/search/featured?limit=${limit}`)
+  setCached(cacheKey, data.data || [], 60_000)
+  return data.data || []
+}
+
 // Create a new property listing
 export async function createProperty(payload: PropertyCreatePayload) {
   const { data } = await axiosInstance.post<ApiResponse<any>>("/properties", payload)

@@ -72,6 +72,7 @@ public class SecurityConfig {
                                 "/auth/**",
                                 "/properties/search",
                                 "/properties/public/**",
+                                "/search/**",
                                 "/amenities",
                                 "/swagger-ui/**",
                                 "/api-docs/**",
