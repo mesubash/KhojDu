@@ -25,7 +25,6 @@ public class WishlistController {
     private final WishlistService wishlistService;
 
     @PostMapping("/{propertyId}")
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Add to wishlist", description = "Add a property to user's wishlist")
     public ResponseEntity<ApiResponse<SuccessResponse>> addToWishlist(
             @PathVariable UUID propertyId,
@@ -36,7 +35,6 @@ public class WishlistController {
     }
 
     @DeleteMapping("/{propertyId}")
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Remove from wishlist", description = "Remove a property from user's wishlist")
     public ResponseEntity<ApiResponse<SuccessResponse>> removeFromWishlist(
             @PathVariable UUID propertyId,
@@ -47,7 +45,6 @@ public class WishlistController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Get wishlist", description = "Get user's wishlist properties")
     public ResponseEntity<ApiResponse<PagedResponse<PropertyListResponse>>> getWishlist(
             @RequestParam(defaultValue = "0") int page,
@@ -59,7 +56,6 @@ public class WishlistController {
     }
 
     @GetMapping("/{propertyId}/check")
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Check if in wishlist", description = "Check if a property is in user's wishlist")
     public ResponseEntity<ApiResponse<Boolean>> isInWishlist(
             @PathVariable UUID propertyId,

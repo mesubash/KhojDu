@@ -28,7 +28,6 @@ public class ReviewController {
     private final ReviewService reviewService;
 
     @PostMapping
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Create review", description = "Create a new property review")
     public ResponseEntity<ApiResponse<ReviewResponse>> createReview(
             @Valid @RequestBody ReviewRequest request,
@@ -39,7 +38,6 @@ public class ReviewController {
     }
 
     @PutMapping("/{reviewId}")
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Update review", description = "Update an existing review")
     public ResponseEntity<ApiResponse<ReviewResponse>> updateReview(
             @PathVariable UUID reviewId,
@@ -50,7 +48,6 @@ public class ReviewController {
     }
 
     @DeleteMapping("/{reviewId}")
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Delete review", description = "Delete a review")
     public ResponseEntity<ApiResponse<SuccessResponse>> deleteReview(
             @PathVariable UUID reviewId,

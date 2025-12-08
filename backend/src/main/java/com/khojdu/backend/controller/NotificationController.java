@@ -24,7 +24,6 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @GetMapping
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Get notifications", description = "Get user notifications")
     public ResponseEntity<ApiResponse<PagedResponse<NotificationResponse>>> getNotifications(
             @RequestParam(defaultValue = "0") int page,
@@ -37,7 +36,6 @@ public class NotificationController {
     }
 
     @GetMapping("/unread-count")
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Get unread count", description = "Get count of unread notifications")
     public ResponseEntity<ApiResponse<Long>> getUnreadCount(Principal principal) {
         Long count = notificationService.getUnreadCount(principal.getName());
@@ -45,7 +43,6 @@ public class NotificationController {
     }
 
     @PutMapping("/{notificationId}/read")
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Mark as read", description = "Mark a notification as read")
     public ResponseEntity<ApiResponse<SuccessResponse>> markAsRead(
             @PathVariable UUID notificationId,
@@ -56,7 +53,6 @@ public class NotificationController {
     }
 
     @PutMapping("/read-all")
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Mark all as read", description = "Mark all notifications as read")
     public ResponseEntity<ApiResponse<SuccessResponse>> markAllAsRead(Principal principal) {
         notificationService.markAllAsRead(principal.getName());
@@ -65,7 +61,6 @@ public class NotificationController {
     }
 
     @DeleteMapping("/{notificationId}")
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Delete notification", description = "Delete a notification")
     public ResponseEntity<ApiResponse<SuccessResponse>> deleteNotification(
             @PathVariable UUID notificationId,

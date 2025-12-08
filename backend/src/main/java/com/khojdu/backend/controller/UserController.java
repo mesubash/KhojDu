@@ -24,7 +24,6 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/profile")
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Get user profile", description = "Get current user profile information")
     public ResponseEntity<ApiResponse<UserProfileResponse>> getProfile(Principal principal) {
         UserProfileResponse response = userService.getUserProfile(principal.getName());
@@ -32,7 +31,6 @@ public class UserController {
     }
 
     @PutMapping("/profile")
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Update user profile", description = "Update current user profile information")
     public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
             @Valid @RequestBody UserProfileRequest request,
@@ -42,7 +40,6 @@ public class UserController {
     }
 
     @DeleteMapping("/account")
-    @PreAuthorize("hasRole('TENANT') or hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Delete user account", description = "Delete current user account")
     public ResponseEntity<ApiResponse<SuccessResponse>> deleteAccount(
             @RequestParam String password,
