@@ -130,15 +130,30 @@ export default function SearchPage() {
   useEffect(() => {
     loadCities()
     fetchListings(0)
-    if (isAuthenticated) {
-      fetchWishlist({ page: 0, size: 50 })
-        .then((resp) => setWishlistIds(new Set((resp?.content || []).map((w) => w.id))))
-        .catch(() => {})
-    }
   }, [fetchListings, loadCities])
+
+  // Load wishlist when authentication state changes
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setWishlistIds(new Set())
+      return
+    }
+    fetchWishlist({ page: 0, size: 50 })
+      .then((resp) => setWishlistIds(new Set((resp?.content || []).map((w) => w.id))))
+      .catch(() => {})
+  }, [isAuthenticated])
 
   const toggleWishlist = async (propertyId: string) => {
     if (!propertyId) return
+    if (!isAuthenticated) {
+      // revert immediately and prompt login
+      setWishlistIds((prev) => {
+        const next = new Set(prev)
+        next.delete(propertyId)
+        return next
+      })
+      return
+    }
     const isSaved = wishlistIds.has(propertyId)
     setWishlistIds((prev) => {
       const next = new Set(prev)

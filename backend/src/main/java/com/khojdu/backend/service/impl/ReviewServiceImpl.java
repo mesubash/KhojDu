@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -39,13 +40,22 @@ public class ReviewServiceImpl implements ReviewService {
     private final PropertyRepository propertyRepository;
     private final ReviewMapper reviewMapper;
 
+    private User resolveUser(String identifier) {
+        Optional<User> byEmail = userRepository.findByEmail(identifier);
+        if (byEmail.isPresent()) return byEmail.get();
+        try {
+            Optional<User> byId = userRepository.findById(UUID.fromString(identifier));
+            if (byId.isPresent()) return byId.get();
+        } catch (IllegalArgumentException ignored) {}
+        throw new ResourceNotFoundException("User not found");
+    }
+
     @Override
     @Transactional
     public ReviewResponse createReview(String userEmail, ReviewRequest request) {
         log.info("Creating review for property: {} by user: {}", request.getPropertyId(), userEmail);
 
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = resolveUser(userEmail);
 
         Property property = propertyRepository.findById(request.getPropertyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));

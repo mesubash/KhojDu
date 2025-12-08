@@ -119,7 +119,7 @@ export async function fetchPropertyReviewSummary(propertyId: string) {
 }
 
 export async function submitReview(propertyId: string, payload: { rating: number; reviewText?: string; stayDurationMonths?: number }) {
-  const { data } = await axiosInstance.post<ApiResponse<any>>(`/reviews/property/${propertyId}`, payload)
+  const { data } = await axiosInstance.post<ApiResponse<any>>(`/reviews`, { propertyId, ...payload })
   invalidate(`property-${propertyId}`) // force refetch detail cache
   invalidate(`reviews-${propertyId}-0-10`)
   return data.data

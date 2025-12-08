@@ -27,12 +27,13 @@ import {
   ThumbsUp,
   Flag,
   Calendar,
+  X,
 } from "lucide-react"
 import Link from "next/link"
 import { GoogleMaps } from "@/components/google-maps"
 import { Header } from "@/components/header"
 import { useParams, useRouter } from "next/navigation"
-import { fetchProperty, fetchPropertyReviewSummary, fetchPropertyReviews } from "@/services/propertyService"
+import { fetchProperty, fetchPropertyReviewSummary, fetchPropertyReviews, submitReview } from "@/services/propertyService"
 import type { PropertyDetail } from "@/types/property"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
@@ -55,6 +56,7 @@ export default function ListingDetailPage() {
   const [isLiked, setIsLiked] = useState(false)
   const [isInWishlist, setIsInWishlist] = useState(false)
   const [wishlistLoading, setWishlistLoading] = useState(false)
+  const [submittingReview, setSubmittingReview] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [reviewForm, setReviewForm] = useState({
     rating: 0,
@@ -150,8 +152,10 @@ export default function ListingDetailPage() {
         return
       }
       try {
+        setSubmittingReview(true)
         await submitReview(propertyId!, {
           rating: reviewForm.rating,
+          overallRating: reviewForm.rating,
           reviewText: reviewForm.review || undefined,
           stayDurationMonths: reviewForm.stayDuration ? Number(reviewForm.stayDuration) : undefined,
         })
@@ -167,6 +171,8 @@ export default function ListingDetailPage() {
       } catch (err) {
         console.error("[Review] Failed to submit review", err)
         toast.error("Failed to submit review. Please try again.")
+      } finally {
+        setSubmittingReview(false)
       }
     },
     [reviewForm, propertyId],
@@ -738,11 +744,21 @@ export default function ListingDetailPage() {
 
       {/* Review Modal */}
       {showReviewModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 z-50 supports-[backdrop-filter]:bg-black/30">
           <Card className="w-full max-w-md rounded-xl bg-card">
-            <CardHeader>
-              <CardTitle>Write a Review</CardTitle>
-              <p className="text-muted-foreground">Share your experience with this property</p>
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+              <div>
+                <CardTitle>Write a Review</CardTitle>
+                <p className="text-muted-foreground">Share your experience with this property</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReviewModal(false)}
+                className="p-2 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                aria-label="Close review modal"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmitReview} className="space-y-4">
