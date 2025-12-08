@@ -12,7 +12,7 @@ import { getDashboardRouteForRole } from "@/lib/utils"
 import { Calendar, CheckCircle, Clock, Home, MapPin, MessageSquare, Search, Star } from "lucide-react"
 import Link from "next/link"
 import { fetchTenantInquiries, fetchWishlist, InquiryItem, WishlistItem } from "@/services/dashboardService"
-import { searchProperties } from "@/services/propertyService"
+import { searchProperties, fetchProperty } from "@/services/propertyService"
 import type { PropertyListItem } from "@/types/property"
 import { toast } from "sonner"
 import { fetchTenantDashboard } from "@/services/tenantService"
@@ -28,6 +28,29 @@ export default function TenantDashboard() {
   const [inquiryCount, setInquiryCount] = useState(0)
   const [isFetching, setIsFetching] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const openWhatsAppMessage = (text: string, phone?: string) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
+    const message = text.replace("{origin}", origin)
+    const digits = phone ? phone.replace(/\D/g, "") : ""
+    const url = `https://wa.me/${digits}?text=${encodeURIComponent(message)}`
+    window.open(url, "_blank")
+  }
+
+  const openWhatsAppForProperty = async (propertyId: string, messageTemplate: string, fallbackTitle?: string) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
+    try {
+      const detail = await fetchProperty(propertyId)
+      const title = detail.title || fallbackTitle || "your property"
+      const text = messageTemplate
+        .replace("{title}", title)
+        .replace("{link}", `${origin}/listing/${propertyId}`)
+        .replace("{origin}", origin)
+      openWhatsAppMessage(text, detail.landlord?.phone)
+    } catch (err) {
+      console.error("[TenantDashboard] Failed to fetch property for WhatsApp", err)
+      toast.error("Could not open WhatsApp, please try again.")
+    }
+  }
 
   useEffect(() => {
     if (isLoading) return
@@ -106,9 +129,9 @@ export default function TenantDashboard() {
                 </Link>
               </Button>
               <Button className="bg-orange-500 hover:bg-orange-600 text-white" asChild>
-                <button type="button" disabled className="flex items-center">
-                  <MessageSquare className="h-4 w-4 mr-2" /> Messages (disabled)
-                </button>
+                <Link href="/search">
+                  <MessageSquare className="h-4 w-4 mr-2" /> Chat via WhatsApp
+                </Link>
               </Button>
             </div>
           </div>
@@ -204,8 +227,18 @@ export default function TenantDashboard() {
                         <Button asChild variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50">
                           <Link href={`/listing/${home.id}`}>View details</Link>
                         </Button>
-                        <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white" disabled>
-                          Schedule visit (coming soon)
+                        <Button
+                          size="sm"
+                          className="bg-orange-500 hover:bg-orange-600 text-white"
+                          onClick={() =>
+                            openWhatsAppForProperty(
+                              home.id,
+                              `Hello! I'd like to book a visit for "{title}". Is it available this week? Link: {link}`,
+                              home.title,
+                            )
+                          }
+                        >
+                          Schedule visit (WhatsApp)
                         </Button>
                       </div>
                     </div>
@@ -277,11 +310,23 @@ export default function TenantDashboard() {
                   <CardTitle className="text-lg">Quick actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Calendar className="h-4 w-4 mr-2" /> Book a new visit
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() =>
+                      openWhatsAppMessage("Hello! I'd like to book a property visit. Can you share available slots?")
+                    }
+                  >
+                    <Calendar className="h-4 w-4 mr-2" /> Book a new visit (WhatsApp)
                   </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Clock className="h-4 w-4 mr-2" /> See recent messages
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() =>
+                      openWhatsAppMessage("Hi! Following up on my earlier inquiry. Could you update me on the status?")
+                    }
+                  >
+                    <Clock className="h-4 w-4 mr-2" /> Send follow-up (WhatsApp)
                   </Button>
                   <Button variant="outline" className="w-full justify-start">
                     <Star className="h-4 w-4 mr-2" /> Rate a recent stay
@@ -300,7 +345,7 @@ export default function TenantDashboard() {
                   <div>
                     <h3 className="font-semibold text-foreground">{home.title}</h3>
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <MapPin className="h-4 w-4" /> {home.location}
+                      <MapPin className="h-4 w-4" /> {home.city || home.district || home.address || home.location || "Not specified"}
                     </p>
                     <div className="flex items-center gap-2 text-sm mt-1">
                       <span className="font-semibold text-orange-600">Rs {(home.rent || 0).toLocaleString()}</span>
@@ -311,11 +356,21 @@ export default function TenantDashboard() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50">
-                      View
+                    <Button variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50" asChild>
+                      <Link href={`/listing/${home.id}`}>View</Link>
                     </Button>
-                    <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white">
-                      Schedule visit
+                    <Button
+                      size="sm"
+                      className="bg-orange-500 hover:bg-orange-600 text-white"
+                      onClick={() =>
+                        openWhatsAppForProperty(
+                          home.id,
+                          `Hi! I'm interested in "{title}". Can we schedule a visit? Link: {link}`,
+                          home.title,
+                        )
+                      }
+                    >
+                      Schedule visit (WhatsApp)
                     </Button>
                   </div>
                 </CardContent>
@@ -332,7 +387,7 @@ export default function TenantDashboard() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {(isFetching ? [] : inquiries).map((visit) => (
-                  <div key={visit.id} className="border border-border rounded-lg p-3">
+                  <div key={visit.id} className="border border-border rounded-lg p-3 space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium text-foreground">{visit.propertyTitle}</p>
@@ -353,6 +408,24 @@ export default function TenantDashboard() {
                       >
                         {visit.status}
                       </Badge>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50" asChild>
+                        <Link href={`/listing/${visit.propertyId}`}>View listing</Link>
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-orange-500 hover:bg-orange-600 text-white"
+                        onClick={() =>
+                          openWhatsAppForProperty(
+                            visit.propertyId,
+                            `Hi! I'm following up on my visit/inquiry (${visit.id}) for "{title}". Can you confirm the schedule? Link: {link}`,
+                            visit.propertyTitle,
+                          )
+                        }
+                      >
+                        Message landlord (WhatsApp)
+                      </Button>
                     </div>
                   </div>
                 ))}

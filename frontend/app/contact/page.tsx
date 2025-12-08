@@ -222,15 +222,15 @@ export default function ContactPage() {
                     disabled={messagingDisabled}
                     className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg py-3 disabled:opacity-60"
                   >
-                    {messagingDisabled ? "Messaging unavailable" : "Send Message"}
+                    {messagingDisabled ? "Use WhatsApp from listings" : "Send Message"}
                   </Button>
                   {messagingDisabled && (
-                    <p className="text-sm text-muted-foreground text-center">
-                      Messaging is temporarily disabled. Please reach us via phone.
-                    </p>
-                  )}
-                  {messagingDisabled && (
-                    <div className="absolute inset-0 rounded-xl bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm pointer-events-none" />
+                    <>
+                      <p className="text-sm text-muted-foreground text-center">
+                        Messaging is paused. Open any property and tap the WhatsApp buttons to reach the landlord or book a visit.
+                      </p>
+                      <div className="absolute inset-0 rounded-xl bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm pointer-events-none" />
+                    </>
                   )}
                 </form>
               </CardContent>

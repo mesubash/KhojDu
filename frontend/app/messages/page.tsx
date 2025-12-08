@@ -111,9 +111,14 @@ export default function MessagesPage() {
               <CardTitle>Messaging unavailable</CardTitle>
             </CardHeader>
             <CardContent className="text-muted-foreground">
-              Messaging is temporarily disabled across the platform. Please reach out via phone or other channels for
-              now.
+              Messaging inside KhojDu is paused. Please open any listing and tap "Chat on WhatsApp" or "Book a visit
+              (WhatsApp)" to contact the landlord directly.
             </CardContent>
+            <div className="px-6 pb-6">
+              <Button asChild className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+                <a href="/search">Go to listings</a>
+              </Button>
+            </div>
           </Card>
         </div>
       </div>
