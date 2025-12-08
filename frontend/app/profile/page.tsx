@@ -18,6 +18,7 @@ import { fetchProfile, updateProfile } from "@/services/userService"
 import type { User } from "@/types/auth"
 import type { PropertyType } from "@/types/property"
 import { toast } from "sonner"
+import { fetchWishlist, type WishlistItem } from "@/services/dashboardService"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const defaultUser: User = {
@@ -27,36 +28,6 @@ const defaultUser: User = {
   role: "TENANT" as any,
   isVerified: false,
 }
-
-const mockFavorites = [
-  {
-    id: 1,
-    title: "Cozy Room in Thamel",
-    location: "Thamel, Kathmandu",
-    rent: 15000,
-    image: "/placeholder.svg?height=150&width=200",
-    rating: 4.6,
-    saved: "2024-03-01",
-  },
-  {
-    id: 2,
-    title: "Modern Flat in Baneshwor",
-    location: "Baneshwor, Kathmandu",
-    rent: 25000,
-    image: "/placeholder.svg?height=150&width=200",
-    rating: 4.3,
-    saved: "2024-02-28",
-  },
-  {
-    id: 3,
-    title: "Student Room Near KU",
-    location: "Dhulikhel, Kavre",
-    rent: 12000,
-    image: "/placeholder.svg?height=150&width=200",
-    rating: 4.1,
-    saved: "2024-02-25",
-  },
-]
 
 const mockReviews = [
   {
@@ -89,6 +60,8 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [profile, setProfile] = useState<User>(defaultUser)
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([])
+  const [wishlistLoading, setWishlistLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -142,6 +115,24 @@ export default function ProfilePage() {
 
     loadProfile()
   }, [authUser?.email, authUser?.fullName, isAuthenticated, router])
+
+  // Load wishlist when favorites tab is viewed
+  useEffect(() => {
+    const loadWishlist = async () => {
+      if (activeTab !== "favorites") return
+      setWishlistLoading(true)
+      try {
+        const resp = await fetchWishlist({ page: 0, size: 12 })
+        setWishlistItems(resp?.content || [])
+      } catch (err) {
+        console.error("[Profile] Failed to load wishlist", err)
+        toast.error("Could not load wishlist.")
+      } finally {
+        setWishlistLoading(false)
+      }
+    }
+    loadWishlist()
+  }, [activeTab])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -428,8 +419,12 @@ export default function ProfilePage() {
                 <p className="text-muted-foreground">Properties you've saved for later</p>
               </CardHeader>
               <CardContent>
+                {wishlistLoading && <p className="text-sm text-muted-foreground">Loading wishlist...</p>}
+                {!wishlistLoading && wishlistItems.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No saved properties yet.</p>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {mockFavorites.map((property) => (
+                  {wishlistItems.map((property) => (
                     <Card key={property.id} className="rounded-lg shadow-sm hover:shadow-md transition-shadow">
                       <div className="relative">
                         <img
@@ -437,7 +432,7 @@ export default function ProfilePage() {
                           alt={property.title}
                           className="w-full h-40 object-cover rounded-t-lg"
                         />
-                        <button className="absolute top-3 right-3 p-2 bg-white/80 dark:bg-black/60 rounded-full hover:bg-white dark:hover:bg-black/80 transition-colors">
+                        <button className="absolute top-3 right-3 p-2 bg-white/80 dark:bg-black/60 rounded-full cursor-default">
                           <Heart className="h-4 w-4 text-red-500 fill-current" />
                         </button>
                       </div>
@@ -445,14 +440,16 @@ export default function ProfilePage() {
                         <h3 className="font-semibold text-foreground mb-2">{property.title}</h3>
                         <div className="flex items-center text-sm text-muted-foreground mb-2">
                           <MapPin className="h-4 w-4 mr-1" />
-                          {property.location}
+                          {property.city || property.district || property.address || property.location || "Not specified"}
                         </div>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
-                            {renderStars(property.rating)}
-                            <span className="text-sm text-muted-foreground">{property.rating}</span>
+                            {renderStars(property.averageRating || 0)}
+                            <span className="text-sm text-muted-foreground">{property.averageRating || "N/A"}</span>
                           </div>
-                          <div className="text-lg font-bold text-orange-600">Rs {property.rent.toLocaleString()}</div>
+                          <div className="text-lg font-bold text-orange-600">
+                            Rs {(Number(property.rent) || 0).toLocaleString()}
+                          </div>
                         </div>
                         <div className="mt-3">
                           <Link href={`/listing/${property.id}`}>

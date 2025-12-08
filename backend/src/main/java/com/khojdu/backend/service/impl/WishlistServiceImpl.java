@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,14 +54,19 @@ public class WishlistServiceImpl implements WishlistService {
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
 
-        if (user.getWishlistProperties() == null) {
-            user.setWishlistProperties(List.of(property));
-        } else if (!user.getWishlistProperties().contains(property)) {
-            user.getWishlistProperties().add(property);
+        List<Property> wishlist = user.getWishlistProperties() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(user.getWishlistProperties());
+
+        if (wishlist.stream().noneMatch(p -> p.getId().equals(property.getId()))) {
+            wishlist.add(property);
+            user.setWishlistProperties(wishlist);
+            userRepository.save(user);
+            log.info("Property added to wishlist successfully");
+        } else {
+            log.info("Property {} already in wishlist for user {}", propertyId, userEmail);
         }
 
-        userRepository.save(user);
-        log.info("Property added to wishlist successfully");
     }
 
     @Override
@@ -74,11 +80,17 @@ public class WishlistServiceImpl implements WishlistService {
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
 
         if (user.getWishlistProperties() != null) {
-            user.getWishlistProperties().remove(property);
-            userRepository.save(user);
+            List<Property> wishlist = new ArrayList<>(user.getWishlistProperties());
+            boolean removed = wishlist.removeIf(p -> p.getId().equals(property.getId()));
+            if (removed) {
+                user.setWishlistProperties(wishlist);
+                userRepository.save(user);
+                log.info("Property removed from wishlist successfully");
+            } else {
+                log.info("Property {} not found in wishlist for user {}", propertyId, userEmail);
+            }
         }
 
-        log.info("Property removed from wishlist successfully");
     }
 
     @Override
