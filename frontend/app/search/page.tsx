@@ -15,6 +15,9 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { fetchCities, searchProperties } from "@/services/propertyService"
 import type { PropertyListItem, PropertyType } from "@/types/property"
+import { fetchWishlist } from "@/services/dashboardService"
+import { addToWishlist, removeFromWishlist } from "@/services/wishlistService"
+import { useAuth } from "@/context/AuthContext"
 
 const defaultAreas = [
   "Thamel",
@@ -74,6 +77,8 @@ export default function SearchPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pagination, setPagination] = useState({ page: 0, size: 0, totalElements: 0, totalPages: 0 })
+  const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set())
+  const { isAuthenticated } = useAuth()
 
   const totalResults = pagination.totalElements || properties.length
 
@@ -125,7 +130,35 @@ export default function SearchPage() {
   useEffect(() => {
     loadCities()
     fetchListings(0)
+    if (isAuthenticated) {
+      fetchWishlist({ page: 0, size: 50 })
+        .then((resp) => setWishlistIds(new Set((resp?.content || []).map((w) => w.id))))
+        .catch(() => {})
+    }
   }, [fetchListings, loadCities])
+
+  const toggleWishlist = async (propertyId: string) => {
+    if (!propertyId) return
+    const isSaved = wishlistIds.has(propertyId)
+    setWishlistIds((prev) => {
+      const next = new Set(prev)
+      if (isSaved) next.delete(propertyId)
+      else next.add(propertyId)
+      return next
+    })
+    try {
+      if (isSaved) await removeFromWishlist(propertyId)
+      else await addToWishlist(propertyId)
+    } catch (err) {
+      // revert on error
+      setWishlistIds((prev) => {
+        const next = new Set(prev)
+        if (isSaved) next.add(propertyId)
+        else next.delete(propertyId)
+        return next
+      })
+    }
+  }
 
   return (
     <div className="page-shell">
@@ -327,8 +360,16 @@ export default function SearchPage() {
                             Featured
                           </Badge>
                         )}
-                        <button className="absolute top-3 right-3 p-2 bg-white/80 rounded-full hover:bg-white transition-colors">
-                          <Heart className="h-4 w-4 text-muted-foreground" />
+                        <button
+                          className={`absolute top-3 right-3 p-2 rounded-full transition-colors ${
+                            wishlistIds.has(listing.id) ? "bg-red-50 text-red-500" : "bg-white/80 text-muted-foreground"
+                          }`}
+                          onClick={() => toggleWishlist(listing.id)}
+                          aria-label={wishlistIds.has(listing.id) ? "Remove from wishlist" : "Add to wishlist"}
+                        >
+                          <Heart
+                            className={`h-4 w-4 ${wishlistIds.has(listing.id) ? "fill-current" : ""}`}
+                          />
                         </button>
                       </div>
                     </div>

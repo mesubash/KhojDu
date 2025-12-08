@@ -10,6 +10,7 @@ import type {
 import type { Review, ReviewSummary } from "@/types/review"
 import type { Amenity } from "@/types/property"
 import { getCached, setCached } from "@/lib/requestCache"
+import { invalidate } from "@/lib/requestCache"
 
 // Search properties using backend search endpoint
 export async function searchProperties(params: PropertySearchRequest = {}) {
@@ -114,5 +115,12 @@ export async function fetchPropertyReviews(propertyId: string, page = 0, size = 
 
 export async function fetchPropertyReviewSummary(propertyId: string) {
   const { data } = await axiosInstance.get<ApiResponse<ReviewSummary>>(`/reviews/property/${propertyId}/summary`)
+  return data.data
+}
+
+export async function submitReview(propertyId: string, payload: { rating: number; reviewText?: string; stayDurationMonths?: number }) {
+  const { data } = await axiosInstance.post<ApiResponse<any>>(`/reviews/property/${propertyId}`, payload)
+  invalidate(`property-${propertyId}`) // force refetch detail cache
+  invalidate(`reviews-${propertyId}-0-10`)
   return data.data
 }

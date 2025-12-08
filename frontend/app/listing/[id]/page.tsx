@@ -143,17 +143,33 @@ export default function ListingDetailPage() {
   }, [property?.landlord?.phone, property?.title])
 
   const handleSubmitReview = useCallback(
-    (e: React.FormEvent) => {
+    async (e: React.FormEvent) => {
       e.preventDefault()
       if (reviewForm.rating === 0) {
-        alert("Please select a rating")
+        toast.error("Please select a rating")
         return
       }
-      alert("Review submitted successfully!")
-      setShowReviewModal(false)
-      setReviewForm({ rating: 0, review: "", stayDuration: "" })
+      try {
+        await submitReview(propertyId!, {
+          rating: reviewForm.rating,
+          reviewText: reviewForm.review || undefined,
+          stayDurationMonths: reviewForm.stayDuration ? Number(reviewForm.stayDuration) : undefined,
+        })
+        toast.success("Review submitted successfully!")
+        const [summary, reviewPage] = await Promise.all([
+          fetchPropertyReviewSummary(propertyId!),
+          fetchPropertyReviews(propertyId!, 0, 10),
+        ])
+        setReviewSummary(summary || null)
+        setReviews(reviewPage?.content || [])
+        setShowReviewModal(false)
+        setReviewForm({ rating: 0, review: "", stayDuration: "" })
+      } catch (err) {
+        console.error("[Review] Failed to submit review", err)
+        toast.error("Failed to submit review. Please try again.")
+      }
     },
-    [reviewForm],
+    [reviewForm, propertyId],
   )
 
   const handleHelpfulClick = useCallback((reviewId: number) => {
