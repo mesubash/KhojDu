@@ -374,14 +374,20 @@ export default function SearchPage() {
                               const locationLabel = formatLocation(listing)
 
                               return (
-                                  <Card
+                                  <motion.div
                                       key={listing.id || index}
-                                      className={`rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden ${viewMode === "list" ? "flex flex-col sm:flex-row" : ""}`}
+                                      initial={{ opacity: 0, y: 12 }}
+                                      whileInView={{ opacity: 1, y: 0 }}
+                                      viewport={{ once: true, amount: 0.2 }}
+                                      transition={{ delay: index * 0.03, duration: 0.25, ease: "easeOut" }}
+                                      whileHover={{ y: -6, scale: viewMode === "grid" ? 1.02 : 1, boxShadow: "0 12px 28px rgba(0,0,0,0.12)" }}
+                                      layout
+                                      className={`rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden cursor-pointer ${viewMode === "list" ? "flex flex-col sm:flex-row" : ""}`}
                                   >
                                       <div className={viewMode === "list" ? "sm:w-80 sm:flex-shrink-0" : ""}>
-                                          <div className="relative">
-                                              <img
-                                                  src={listing.primaryImageUrl || "/placeholder.svg"}
+                                            <div className="relative">
+                                                <img
+                                                    src={listing.primaryImageUrl || "/placeholder.svg"}
                                                   alt={listing.title}
                                                   className={`object-cover ${viewMode === "list" ? "w-full h-48 sm:h-full" : "w-full h-48"}`}/>
                                               {listing.isFeatured && (
@@ -455,7 +461,7 @@ export default function SearchPage() {
                                               </Button>
                                           </div>
                                       </CardContent>
-                                  </Card>
+                                  </motion.div>
                               )
                           })
                       )}
