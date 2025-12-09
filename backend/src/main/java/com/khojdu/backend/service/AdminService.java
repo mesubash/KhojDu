@@ -14,6 +14,9 @@ public interface AdminService {
     void featureProperty(UUID propertyId, boolean featured);
     void verifyUser(UUID userId);
     void deactivateUser(UUID userId);
+    void activateUser(UUID userId);
+    void updateUserRole(UUID userId, UserRole role);
+    void deleteUser(UUID userId);
     PagedResponse<?> getPendingVerifications(int page, int size);
     void approveVerification(UUID verificationId);
     void rejectVerification(UUID verificationId, String reason);

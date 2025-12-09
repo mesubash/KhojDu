@@ -68,12 +68,38 @@ public class AdminController {
                 SuccessResponse.of("User account has been verified")));
     }
 
+    @PutMapping("/users/{userId}/activate")
+    @Operation(summary = "Activate user", description = "Activate a user account")
+    public ResponseEntity<ApiResponse<SuccessResponse>> activateUser(@PathVariable UUID userId) {
+        adminService.activateUser(userId);
+        return ResponseEntity.ok(ApiResponse.success("User activated",
+                SuccessResponse.of("User account has been activated")));
+    }
+
     @PutMapping("/users/{userId}/deactivate")
     @Operation(summary = "Deactivate user", description = "Deactivate a user account")
     public ResponseEntity<ApiResponse<SuccessResponse>> deactivateUser(@PathVariable UUID userId) {
         adminService.deactivateUser(userId);
         return ResponseEntity.ok(ApiResponse.success("User deactivated",
                 SuccessResponse.of("User account has been deactivated")));
+    }
+
+    @PutMapping("/users/{userId}/role")
+    @Operation(summary = "Update user role", description = "Change a user's role")
+    public ResponseEntity<ApiResponse<SuccessResponse>> updateUserRole(
+            @PathVariable UUID userId,
+            @RequestParam UserRole role) {
+        adminService.updateUserRole(userId, role);
+        return ResponseEntity.ok(ApiResponse.success("User role updated",
+                SuccessResponse.of("User role has been updated")));
+    }
+
+    @DeleteMapping("/users/{userId}")
+    @Operation(summary = "Delete user", description = "Delete a user account")
+    public ResponseEntity<ApiResponse<SuccessResponse>> deleteUser(@PathVariable UUID userId) {
+        adminService.deleteUser(userId);
+        return ResponseEntity.ok(ApiResponse.success("User deleted",
+                SuccessResponse.of("User account has been deleted")));
     }
 
     @GetMapping("/verifications/pending")

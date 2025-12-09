@@ -138,9 +138,8 @@ export default function LandlordDashboard() {
     try {
       await togglePropertyAvailability(propertyId)
       toast.success("Availability updated")
-      // refresh list
-      const updated = await fetchLandlordProperties({ page: 0, size: 20 })
-      setProperties(updated?.content || [])
+      // refresh list first page
+      loadProperties(0, false)
     } catch (err) {
       console.error("[LandlordDashboard] Toggle availability failed", err)
       toast.error("Could not update availability.")
@@ -648,6 +647,18 @@ export default function LandlordDashboard() {
                     )
                   })}
                 </div>
+                {propertiesHasMore && (
+                  <div className="flex justify-center pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => loadProperties(propertiesPage + 1, true)}
+                      disabled={propertiesLoadingMore}
+                      className="min-w-[160px]"
+                    >
+                      {propertiesLoadingMore ? <Spinner size={18} /> : "Load more"}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 

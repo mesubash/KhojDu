@@ -18,6 +18,7 @@ public class UserMapper {
         response.setRole(user.getRole());
         response.setProfileImageUrl(user.getProfileImageUrl());
         response.setIsVerified(user.getIsVerified());
+        response.setIsActive(user.getIsActive());
         response.setDateOfBirth(user.getDateOfBirth());
         response.setOccupation(user.getOccupation());
         response.setCreatedAt(user.getCreatedAt());

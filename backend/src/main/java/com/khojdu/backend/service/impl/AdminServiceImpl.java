@@ -8,6 +8,7 @@ import com.khojdu.backend.entity.enums.ComplaintStatus;
 import com.khojdu.backend.entity.enums.PropertyStatus;
 import com.khojdu.backend.entity.enums.UserRole;
 import com.khojdu.backend.entity.enums.VerificationStatus;
+import com.khojdu.backend.exception.ConflictException;
 import com.khojdu.backend.exception.ResourceNotFoundException;
 import com.khojdu.backend.repository.*;
 import com.khojdu.backend.service.AdminService;
@@ -19,10 +20,13 @@ import com.khojdu.backend.dto.property.PropertyListResponse;
 import com.khojdu.backend.dto.user.UserResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -154,6 +158,53 @@ public class AdminServiceImpl implements AdminService {
         userRepository.save(user);
 
         log.info("User deactivated successfully: {}", userId);
+    }
+
+    @Override
+    @Transactional
+    public void activateUser(UUID userId) {
+        log.info("Activating user: {}", userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setIsActive(true);
+        userRepository.save(user);
+        log.info("User activated successfully: {}", userId);
+    }
+
+    @Override
+    @Transactional
+    public void updateUserRole(UUID userId, UserRole role) {
+        log.info("Updating user role: {} -> {}", userId, role);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setRole(role);
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void deleteUser(UUID userId) {
+        log.info("Deleting user: {}", userId);
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = authentication != null ? authentication.getName() : null;
+        if (currentUsername != null) {
+            userRepository.findByEmail(currentUsername)
+                    .filter(current -> current.getId().equals(userId))
+                    .ifPresent(u -> {
+                        throw new IllegalArgumentException("You cannot delete your own account.");
+                    });
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        try {
+            userRepository.delete(user);
+            log.info("User deleted successfully: {}", userId);
+        } catch (DataIntegrityViolationException ex) {
+            log.warn("User delete blocked due to existing references: {}", userId, ex);
+            throw new ConflictException("Cannot delete this user because there are related records linked to the account.");
+        }
     }
 
     @Override
