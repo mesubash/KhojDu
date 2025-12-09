@@ -42,6 +42,12 @@ export default function HomePage() {
     },
   ]
 
+  const homeListContainer = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } } }
+  const homeItem = {
+    hidden: { opacity: 0, y: 14 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] as any } },
+  }
+
   useEffect(() => {
     const loadFeatured = async () => {
       setLoading(true)
@@ -142,9 +148,12 @@ export default function HomePage() {
               return (
                 <motion.div
                   key={property.id}
-                  whileHover={{ y: -6, scale: 1.02, boxShadow: "0 18px 40px rgba(0,0,0,0.14)" }}
-                  transition={{ type: "spring", stiffness: 220, damping: 18 }}
-                  className="h-full"
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.15 }}
+                  transition={{ delay: 0.04, duration: 0.25, ease: "easeOut" }}
+                  whileHover={{ y: -8, scale: 1.02, boxShadow: "0 18px 40px rgba(0,0,0,0.16)" }}
+                  className="h-full cursor-pointer"
                 >
                 <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
                   <div className="relative">
@@ -245,48 +254,70 @@ export default function HomePage() {
             <p className="text-xl text-muted-foreground">Experience the best in rental property search</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+            variants={homeListContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.2 }}
+          >
             {features.map((feature, index) => (
-              <Card key={index} className="text-center hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-gradient-to-r from-orange-500 to-teal-500 flex items-center justify-center">
-                    <feature.icon className="w-6 h-6 text-white" />
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
-                  <p className="text-muted-foreground text-sm">{feature.description}</p>
-                </CardContent>
-              </Card>
+              <motion.div
+                key={index}
+                variants={homeItem}
+                whileHover={{ y: -6, scale: 1.02, boxShadow: "0 16px 36px rgba(0,0,0,0.12)" }}
+                className="cursor-pointer"
+              >
+                <Card className="text-center hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-gradient-to-r from-orange-500 to-teal-500 flex items-center justify-center">
+                      <feature.icon className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
+                    <p className="text-muted-foreground text-sm">{feature.description}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* CTA Section */}
       <section className="py-20">
         <div className="container-responsive">
-          <Card className="text-center">
-            <CardContent className="p-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Find Your Dream Home?</h2>
-              <p className="text-xl text-muted-foreground mb-8">
-                Join thousands of satisfied tenants who found their perfect rental through <span className="text-orange-500" style={{ fontFamily: 'var(--font-nothing-you-could-do)' }}>KhojDu</span>
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/search">
-                  <Button
-                    size="lg"
-                    className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white"
-                  >
-                    Start Searching
-                  </Button>
-                </Link>
-                <Link href="/auth/signup">
-                  <Button size="lg" variant="outline">
-                    Create Account
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            whileHover={{ y: -6, scale: 1.01 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="cursor-pointer"
+          >
+            <Card className="text-center">
+              <CardContent className="p-12">
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Find Your Dream Home?</h2>
+                <p className="text-xl text-muted-foreground mb-8">
+                  Join thousands of satisfied tenants who found their perfect rental through <span className="text-orange-500" style={{ fontFamily: 'var(--font-nothing-you-could-do)' }}>KhojDu</span>
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Link href="/search">
+                    <Button
+                      size="lg"
+                      className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white"
+                    >
+                      Start Searching
+                    </Button>
+                  </Link>
+                  <Link href="/auth/signup">
+                    <Button size="lg" variant="outline">
+                      Create Account
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
       </section>
 
