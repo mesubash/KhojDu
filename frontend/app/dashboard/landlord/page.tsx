@@ -32,6 +32,7 @@ import { deleteProperty, togglePropertyAvailability } from "@/services/propertyS
 import { toast } from "sonner"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Spinner } from "@/components/ui/spinner"
+import { motion } from "framer-motion"
 
 export default function LandlordDashboard() {
   const router = useRouter()
@@ -41,8 +42,14 @@ export default function LandlordDashboard() {
   const [properties, setProperties] = useState<LandlordProperty[]>([])
   const [isFetching, setIsFetching] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [propertiesPage, setPropertiesPage] = useState(0)
+  const [propertiesHasMore, setPropertiesHasMore] = useState(false)
+  const [propertiesLoadingMore, setPropertiesLoadingMore] = useState(false)
   const [isMutating, setIsMutating] = useState<string | null>(null)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.22 } } }
+  const stagger = { show: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } } }
+  const cardHover = { whileHover: { y: -4, scale: 1.01, transition: { duration: 0.16 } } }
   const handleLogout = async () => {
     if (!showLogoutConfirm) {
       setShowLogoutConfirm(true)
@@ -74,17 +81,7 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     if (!isAuthenticated) return
-    setIsFetching(true)
-    fetchLandlordProperties({ page: 0, size: 20 })
-      .then((resp) => {
-        setProperties(resp?.content || [])
-        setFetchError(null)
-      })
-      .catch((err) => {
-        console.error("[LandlordDashboard] Failed to load properties", err)
-        setFetchError("Could not load your listings right now.")
-      })
-      .finally(() => setIsFetching(false))
+    loadProperties(0, false)
   }, [isAuthenticated])
 
   // Show loading state while checking authentication
@@ -165,6 +162,26 @@ export default function LandlordDashboard() {
       toast.error("Could not delete listing.")
     } finally {
       setIsMutating(null)
+    }
+  }
+
+  const loadProperties = async (page = 0, append = false) => {
+    append ? setPropertiesLoadingMore(true) : setIsFetching(true)
+    try {
+      const resp = await fetchLandlordProperties({ page, size: 10 })
+      setProperties((prev) => (append ? [...prev, ...(resp?.content || [])] : resp?.content || []))
+      setPropertiesPage(page)
+      const totalElements = resp?.totalElements ?? resp?.content?.length ?? 0
+      const totalPages =
+        resp?.totalPages ?? (resp?.size ? Math.ceil(totalElements / resp.size) : Math.ceil(totalElements / 10))
+      setPropertiesHasMore(page + 1 < (totalPages || 0))
+      setFetchError(null)
+    } catch (err) {
+      console.error("[LandlordDashboard] Failed to load properties", err)
+      setFetchError("Could not load your listings right now.")
+      setPropertiesHasMore(false)
+    } finally {
+      append ? setPropertiesLoadingMore(false) : setIsFetching(false)
     }
   }
 
@@ -326,27 +343,34 @@ export default function LandlordDashboard() {
         <div className="flex-1 lg:ml-0">
           {/* Intro banner */}
           <div className="container-responsive py-6 lg:py-8">
-            <div className="bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-orange-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div>
-                  <p className="text-sm text-orange-500 font-medium">Landlord Space</p>
-                  <h1 className="text-3xl font-bold text-foreground">Manage your listings effortlessly</h1>
-                  <p className="text-muted-foreground">Track performance, respond to tenants, and keep your properties updated.</p>
+            <motion.div variants={fadeUp} initial="hidden" animate="show">
+              <Card className="bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-orange-100 dark:border-gray-800 rounded-2xl p-6 shadow-lg">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-orange-500 font-medium">Landlord Space</p>
+                    <div className="flex items-center gap-3">
+                      <h1 className="text-3xl font-bold text-foreground">Manage your listings effortlessly</h1>
+                      <Badge variant="outline" className="border-orange-400 text-orange-600">
+                        {user?.role || UserRole.LANDLORD}
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground">Track performance, respond to tenants, and keep your properties updated.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Link href="/dashboard/create">
+                      <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white">
+                        <Plus className="h-4 w-4 mr-2" /> Add listing
+                      </Button>
+                    </Link>
+                    <Link href="/messages">
+                      <Button variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50">
+                        <MessageSquare className="h-4 w-4 mr-2" /> Messages
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link href="/dashboard/create">
-                    <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white">
-                      <Plus className="h-4 w-4 mr-2" /> Add listing
-                    </Button>
-                  </Link>
-                  <Link href="/messages">
-                    <Button variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50">
-                      <MessageSquare className="h-4 w-4 mr-2" /> Messages
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </div>
+              </Card>
+            </motion.div>
           </div>
 
           {/* Mobile Header */}
@@ -370,88 +394,102 @@ export default function LandlordDashboard() {
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <motion.div
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+                  variants={stagger}
+                  initial="hidden"
+                  animate="show"
+                >
                   {derivedStats.map((stat, index) => {
                     const Icon = stat.icon
-                    return (<Card key={index} className="rounded-xl shadow-sm">
-                      <CardContent className="p-6">
+                    return (
+                      <motion.div key={stat.title} variants={fadeUp} {...cardHover}>
+                        <Card className="rounded-xl shadow-sm bg-white/85 dark:bg-gray-900/70 backdrop-blur-xl border border-white/30">
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm text-muted-foreground">{stat.title}</p>
+                                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                                {stat.change && <p className="text-sm text-green-600 dark:text-green-400">{stat.change}</p>}
+                              </div>
+                              <Icon className="h-8 w-8 text-orange-600" />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )
+                  })}
+                </motion.div>
+
+                {/* Quick snapshot */}
+                <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-6" variants={stagger} initial="hidden" animate="show">
+                  <motion.div variants={fadeUp} {...cardHover}>
+                    <Card className="rounded-2xl border-orange-100/60 dark:border-gray-800/60 shadow-sm bg-white/85 dark:bg-gray-900/70 backdrop-blur-xl">
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <BarChart3 className="h-5 w-5 text-orange-500" /> Performance
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">{stat.title}</p>
-                            <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                            {stat.change && <p className="text-sm text-green-600 dark:text-green-400">{stat.change}</p>}
-                          </div>
-                          <Icon className="h-8 w-8 text-orange-600" />
+                          <span className="text-muted-foreground text-sm">Views this month</span>
+                          <span className="text-lg font-semibold text-foreground">
+                            {derivedStats[3]?.value || "0"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground text-sm">Avg. rating</span>
+                          <span className="flex items-center gap-1 font-semibold text-foreground">
+                            0.0 <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground text-sm">Responses</span>
+                          <span className="text-lg font-semibold text-foreground">92%</span>
                         </div>
                       </CardContent>
                     </Card>
-                    )
-                  })}
-                </div>
-
-                {/* Quick snapshot */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <Card className="rounded-2xl border-orange-100/60 dark:border-gray-800/60 shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <BarChart3 className="h-5 w-5 text-orange-500" /> Performance
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-sm">Views this month</span>
-                        <span className="text-lg font-semibold text-foreground">
-                          {derivedStats[3]?.value || "0"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-sm">Avg. rating</span>
-                        <span className="flex items-center gap-1 font-semibold text-foreground">
-                          0.0 <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-sm">Responses</span>
-                        <span className="text-lg font-semibold text-foreground">92%</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card className="rounded-2xl border-orange-100/60 dark:border-gray-800/60 shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Home className="h-5 w-5 text-orange-500" /> Active listings
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {properties.slice(0, 3).map((listing) => (
-                        <div key={listing.id} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-9 h-9 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center text-sm font-semibold">
-                              {listing.title.slice(0, 1)}
+                  </motion.div>
+                  <motion.div variants={fadeUp} {...cardHover}>
+                    <Card className="rounded-2xl border-orange-100/60 dark:border-gray-800/60 shadow-sm bg-white/85 dark:bg-gray-900/70 backdrop-blur-xl">
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Home className="h-5 w-5 text-orange-500" /> Active listings
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {properties.slice(0, 3).map((listing) => (
+                          <div key={listing.id} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-9 h-9 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center text-sm font-semibold">
+                                {listing.title.slice(0, 1)}
+                              </div>
+                              <div>
+                                <p className="font-medium text-sm text-foreground truncate max-w-[160px]">{listing.title}</p>
+                                <p className="text-xs text-muted-foreground">{listing.location}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-sm text-foreground truncate max-w-[160px]">{listing.title}</p>
-                              <p className="text-xs text-muted-foreground">{listing.location}</p>
-                            </div>
+                            <Badge variant="secondary" className="bg-green-100 text-green-800">
+                              {listing.status || "Active"}
+                            </Badge>
                           </div>
-                          <Badge variant="secondary" className="bg-green-100 text-green-800">
-                            {listing.status || "Active"}
-                          </Badge>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                  <Card className="rounded-2xl border-orange-100/60 dark:border-gray-800/60 shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <MessageSquare className="h-5 w-5 text-orange-500" /> Recent reviews
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <p className="text-sm text-muted-foreground">No recent reviews available.</p>
-                    </CardContent>
-                  </Card>
-                </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                  <motion.div variants={fadeUp} {...cardHover}>
+                    <Card className="rounded-2xl border-orange-100/60 dark:border-gray-800/60 shadow-sm bg-white/85 dark:bg-gray-900/70 backdrop-blur-xl">
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <MessageSquare className="h-5 w-5 text-orange-500" /> Recent reviews
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <p className="text-sm text-muted-foreground">No recent reviews available.</p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </motion.div>
               </div>
             )}
 
@@ -475,6 +513,12 @@ export default function LandlordDashboard() {
                   <div className="text-sm text-red-600 mb-4">{fetchError}</div>
                 )}
 
+                {isFetching && (
+                  <div className="flex items-center justify-center py-8">
+                    <Spinner size={32} />
+                  </div>
+                )}
+
                 {!isFetching && properties.length === 0 && (
                   <div className="text-center text-muted-foreground border border-dashed border-border rounded-xl py-10">
                     No listings yet. Create your first property to see it here.
@@ -491,7 +535,8 @@ export default function LandlordDashboard() {
                     const isActive = listing.isAvailable ?? listing.status?.toLowerCase() === "active"
 
                     return (
-                      <Card key={listing.id} className="rounded-xl shadow-sm hover:shadow-md transition-shadow bg-card">
+                      <motion.div key={listing.id} variants={fadeUp} {...cardHover}>
+                      <Card className="rounded-xl shadow-sm hover:shadow-lg transition-all bg-card backdrop-blur-xl border border-white/20">
                         <CardContent className="p-6">
                           <div className="flex flex-col lg:flex-row gap-6">
                             <img
@@ -599,6 +644,7 @@ export default function LandlordDashboard() {
                           </div>
                         </CardContent>
                       </Card>
+                      </motion.div>
                     )
                   })}
                 </div>
