@@ -63,7 +63,6 @@ public class DefaultUserConfig {
             );
             
             log.info("✅ Default users initialization complete!");
-            log.info("⚠️  IMPORTANT: Change all default passwords immediately in production!");
         };
     }
     
