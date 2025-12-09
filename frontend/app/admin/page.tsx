@@ -156,19 +156,16 @@ export default function AdminDashboard() {
     </div>
   )
 
-  const renderTableSkeleton = (cols: number, rows = 4) => (
-    <tbody>
-      {Array.from({ length: rows }).map((_, rIdx) => (
-        <tr key={`row-skel-${rIdx}`} className="border-b">
-          {Array.from({ length: cols }).map((_, cIdx) => (
-            <td key={`cell-${rIdx}-${cIdx}`} className="p-4">
-              <div className="h-10 rounded-lg bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50 animate-pulse" />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </tbody>
-  )
+  const renderTableSkeletonRows = (cols: number, rows = 4) =>
+    Array.from({ length: rows }).map((_, rIdx) => (
+      <tr key={`row-skel-${rIdx}`} className="border-b">
+        {Array.from({ length: cols }).map((_, cIdx) => (
+          <td key={`cell-${rIdx}-${cIdx}`} className="p-4">
+            <div className="h-10 rounded-lg bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50 animate-pulse" />
+          </td>
+        ))}
+      </tr>
+    ))
 
   const statCards = [
     { title: "Total Users", value: stats?.totalUsers ?? "--", icon: Users, color: "text-orange-600" },
@@ -357,7 +354,12 @@ export default function AdminDashboard() {
         {activeTab === "users" && (
           <div className="space-y-6">
             {/* Search and Filter */}
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              {...cardHover}
+            >
               <Card className="rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-border/60">
                 <CardContent className="p-6">
                   <div className="flex flex-col sm:flex-row gap-4">
@@ -387,74 +389,66 @@ export default function AdminDashboard() {
             </motion.div>
 
             {/* Users Table */}
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, delay: 0.04 }}>
-              <Card className="rounded-xl shadow-sm bg-white/85 dark:bg-gray-900/75 backdrop-blur-xl border border-border/60">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.22, delay: 0.04 }}
+              {...cardHover}
+            >
+              <Card className="rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/65 backdrop-blur-2xl border border-white/20 dark:border-white/10">
                 <CardHeader>
                   <CardTitle className="text-xl">Users ({usersData.length})</CardTitle>
                   {listError && <p className="text-sm text-red-600">{listError}</p>}
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-muted border-b">
-                        <tr>
-                          <th className="text-left p-4 font-medium text-foreground text-sm">User</th>
-                          <th className="text-left p-4 font-medium text-foreground text-sm hidden sm:table-cell">Role</th>
-                          <th className="text-left p-4 font-medium text-foreground text-sm hidden md:table-cell">Status</th>
-                          <th className="text-left p-4 font-medium text-foreground text-sm hidden lg:table-cell">Joined</th>
-                          <th className="text-left p-4 font-medium text-foreground text-sm hidden lg:table-cell">
-                            Listings
-                          </th>
-                          <th className="text-left p-4 font-medium text-foreground text-sm">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {listLoading && renderTableSkeleton(6)}
+                <CardContent className="space-y-3">
+                  {listLoading && (
+                    <div className="space-y-2">
+                      {renderTableSkeletonRows(1, 3)}
+                    </div>
+                  )}
+                  {!listLoading && usersData.length === 0 && (
+                    <p className="text-sm text-muted-foreground px-2">No users found for the current filter.</p>
+                  )}
+                  <motion.div
+                    variants={listContainer}
+                    initial="hidden"
+                    animate="show"
+                    className="space-y-3"
+                  >
                         {!listLoading &&
                           usersData.map((user, idx) => (
-                            <motion.tr
+                            <motion.div
                               key={user.id}
-                              className="border-b hover:bg-muted/50 dark:hover:bg-muted/20 cursor-pointer"
-                              custom={idx}
-                              initial="hidden"
-                              animate="show"
                               variants={rowVariants}
+                              custom={idx}
+                              whileHover={{ y: -3, scale: 1.002 }}
+                              className="p-4 rounded-xl bg-white/60 dark:bg-gray-900/50 backdrop-blur-xl border border-white/25 dark:border-white/10 hover:border-orange-300/70 hover:shadow-lg transition cursor-pointer"
                             >
-                              <td className="p-4">
-                                <div>
-                                  <p className="font-medium">{user.fullName}</p>
+                              <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-center">
+                                <div className="space-y-1 col-span-2">
+                                  <p className="font-semibold text-foreground">{user.fullName}</p>
                                   <p className="text-sm text-muted-foreground">{user.email}</p>
-                                  <div className="sm:hidden mt-1">
-                                    <Badge
-                                      variant={user.isActive ? "default" : "secondary"}
-                                      className={`text-xs ${user.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-                                    >
-                                      {user.isActive ? "Active" : "Inactive"}
-                                    </Badge>
-                                  </div>
+                                  <p className="text-xs text-muted-foreground">{user.phone || "No phone"}</p>
                                 </div>
-                              </td>
-                              <td className="p-4 hidden sm:table-cell">
-                                <Badge variant="outline" className="text-xs">
-                                  {user.role}
-                                </Badge>
-                              </td>
-                              <td className="p-4 hidden md:table-cell">
-                                <Badge
-                                  variant={user.isActive ? "default" : "secondary"}
-                                  className={`text-xs ${user.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-                                >
-                                  {user.isActive ? "Active" : "Inactive"}
-                                </Badge>
-                              </td>
-                              <td className="p-4 text-sm text-muted-foreground hidden lg:table-cell">
-                                {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}
-                              </td>
-                              <td className="p-4 text-sm text-muted-foreground hidden lg:table-cell">
-                                {user.isVerified ? "Verified" : "Unverified"}
-                              </td>
-                              <td className="p-4">
-                                <div className="flex items-center space-x-2">
+                                <div className="flex flex-wrap gap-2 items-center">
+                                  <Badge variant="outline" className="w-fit">{user.role}</Badge>
+                                  <Badge
+                                    variant={user.isActive ? "default" : "secondary"}
+                                    className={`text-xs w-fit ${user.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+                                  >
+                                    {user.isActive ? "Active" : "Inactive"}
+                                  </Badge>
+                                </div>
+                                <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                                  <span>Joined {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</span>
+                                  <span className="text-xs">
+                                    Status:{" "}
+                                    <Badge variant="outline" className="text-xs">
+                                      {user.isVerified ? "Verified" : "Unverified"}
+                                    </Badge>
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-start md:justify-end gap-2">
                                   <Button variant="ghost" size="sm">
                                     <Eye className="h-4 w-4" />
                                   </Button>
@@ -465,19 +459,10 @@ export default function AdminDashboard() {
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
-                              </td>
-                            </motion.tr>
+                              </div>
+                            </motion.div>
                           ))}
-                        {!listLoading && usersData.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="p-4 text-sm text-muted-foreground">
-                              No users found for the current filter.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                  </motion.div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -488,7 +473,12 @@ export default function AdminDashboard() {
         {activeTab === "listings" && (
           <div className="space-y-6">
             {/* Search and Filter */}
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              {...cardHover}
+            >
               <Card className="rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-border/60">
                 <CardContent className="p-6">
                   <div className="flex flex-col sm:flex-row gap-4">
@@ -518,95 +508,69 @@ export default function AdminDashboard() {
             </motion.div>
 
             {/* Listings Table */}
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, delay: 0.04 }}>
-              <Card className="rounded-xl shadow-sm bg-white/85 dark:bg-gray-900/75 backdrop-blur-xl border border-border/60">
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.22, delay: 0.04 }}
+              {...cardHover}
+            >
+              <Card className="rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/65 backdrop-blur-2xl border border-white/20 dark:border-white/10">
                 <CardHeader>
                   <CardTitle className="text-xl">Listings ({propertiesData.length})</CardTitle>
                   {listError && <p className="text-sm text-red-600">{listError}</p>}
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-muted border-b">
-                        <tr>
-                          <th className="text-left p-4 font-medium text-foreground text-sm">Property</th>
-                          <th className="text-left p-4 font-medium text-foreground text-sm hidden sm:table-cell">
-                            Landlord
-                          </th>
-                          <th className="text-left p-4 font-medium text-foreground text-sm hidden md:table-cell">Rent</th>
-                          <th className="text-left p-4 font-medium text-foreground text-sm hidden lg:table-cell">Views</th>
-                          <th className="text-left p-4 font-medium text-foreground text-sm hidden lg:table-cell">
-                            Created
-                          </th>
-                          <th className="text-left p-4 font-medium text-foreground text-sm">Status</th>
-                          <th className="text-left p-4 font-medium text-foreground text-sm">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {listLoading && renderTableSkeleton(7)}
-                        {!listLoading &&
-                          propertiesData.map((listing, idx) => (
-                            <motion.tr
-                              key={listing.id}
-                              className="border-b hover:bg-muted/50 dark:hover:bg-muted/20 cursor-pointer"
-                              custom={idx}
-                              initial="hidden"
-                              animate="show"
-                              variants={rowVariants}
+                <CardContent className="space-y-3">
+                  {listLoading && (
+                    <div className="space-y-2">{renderTableSkeletonRows(1, 3)}</div>
+                  )}
+                  {!listLoading && propertiesData.length === 0 && (
+                    <p className="text-sm text-muted-foreground px-2">No listings found for the current filter.</p>
+                  )}
+                  <motion.div variants={listContainer} initial="hidden" animate="show" className="space-y-3">
+                    {!listLoading &&
+                      propertiesData.map((listing, idx) => (
+                        <motion.div
+                          key={listing.id}
+                          variants={rowVariants}
+                          custom={idx}
+                          whileHover={{ y: -3, scale: 1.002 }}
+                          className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 rounded-xl bg-white/60 dark:bg-gray-900/50 backdrop-blur-xl border border-white/20 dark:border-white/10 cursor-pointer"
+                        >
+                          <div className="space-y-1">
+                            <p className="font-semibold text-foreground">{listing.title}</p>
+                            <p className="text-sm text-muted-foreground">by {listing.landlordName || "Unknown"}</p>
+                            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                              <span>Rent: Rs {(Number(listing.monthlyRent) || 0).toLocaleString()}</span>
+                              <span>Views: {listing.viewCount ?? "—"}</span>
+                              <span>{listing.createdAt ? new Date(listing.createdAt).toLocaleDateString() : "—"}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Badge
+                              variant={listing.status === "APPROVED" ? "default" : "secondary"}
+                              className={`text-xs ${
+                                listing.status === "APPROVED"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}
                             >
-                              <td className="p-4">
-                                <p className="font-medium">{listing.title}</p>
-                                <p className="text-sm text-muted-foreground sm:hidden">by {listing.landlordName || "Unknown"}</p>
-                              </td>
-                              <td className="p-4 text-sm text-muted-foreground hidden sm:table-cell">
-                                {listing.landlordName || "—"}
-                              </td>
-                              <td className="p-4 text-sm font-medium hidden md:table-cell">
-                                Rs {(Number(listing.monthlyRent) || 0).toLocaleString()}
-                              </td>
-                              <td className="p-4 text-sm text-muted-foreground hidden lg:table-cell">
-                                {listing.viewCount ?? "—"}
-                              </td>
-                              <td className="p-4 text-sm text-muted-foreground hidden lg:table-cell">
-                                {listing.createdAt ? new Date(listing.createdAt).toLocaleDateString() : "—"}
-                              </td>
-                              <td className="p-4">
-                                <Badge
-                                  variant={listing.status === "APPROVED" ? "default" : "secondary"}
-                                  className={`text-xs ${
-                                    listing.status === "APPROVED"
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-yellow-100 text-yellow-800"
-                                  }`}
-                                >
-                                  {listing.status || "UNKNOWN"}
-                                </Badge>
-                              </td>
-                              <td className="p-4">
-                                <div className="flex items-center space-x-2">
-                                  <Button variant="ghost" size="sm">
-                                    <CheckCircle className="h-4 w-4 text-green-600" />
-                                  </Button>
-                                  <Button variant="ghost" size="sm">
-                                    <XCircle className="h-4 w-4 text-red-600" />
-                                  </Button>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </td>
-                            </motion.tr>
-                          ))}
-                        {!listLoading && propertiesData.length === 0 && (
-                          <tr>
-                            <td colSpan={7} className="p-4 text-sm text-muted-foreground">
-                              No listings found for the current filter.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                              {listing.status || "UNKNOWN"}
+                            </Badge>
+                            <div className="flex items-center space-x-2">
+                              <Button variant="ghost" size="sm">
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              </Button>
+                              <Button variant="ghost" size="sm">
+                                <XCircle className="h-4 w-4 text-red-600" />
+                              </Button>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                  </motion.div>
                 </CardContent>
               </Card>
             </motion.div>
