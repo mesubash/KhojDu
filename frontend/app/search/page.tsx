@@ -77,8 +77,10 @@ export default function SearchPage() {
   const [areas, setAreas] = useState<string[]>(defaultAreas)
   const [properties, setProperties] = useState<PropertyListItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pagination, setPagination] = useState({ page: 0, size: 0, totalElements: 0, totalPages: 0 })
+  const [pagination, setPagination] = useState({ page: 0, size: 9, totalElements: 0, totalPages: 0 })
+  const [hasMore, setHasMore] = useState(false)
   const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set())
   const { isAuthenticated } = useAuth()
 
@@ -97,14 +99,14 @@ export default function SearchPage() {
   }, [])
 
   const fetchListings = useCallback(
-    async (page = 0) => {
-      setIsLoading(true)
+    async (page = 0, append = false) => {
+      append ? setIsLoadingMore(true) : setIsLoading(true)
       setError(null)
 
       try {
         const data = await searchProperties({
           page,
-          size: 9,
+          size: pagination.size,
           propertyType: propertyType !== "all" ? propertyType : undefined,
           city: selectedArea !== "all" ? selectedArea : searchQuery.trim() || undefined,
           minRent: priceRange[0],
@@ -112,26 +114,33 @@ export default function SearchPage() {
           availableOnly: true,
         })
 
-        setProperties(data?.content || [])
+        setProperties((prev) => (append ? [...prev, ...(data?.content || [])] : data?.content || []))
+        const totalElements = data?.totalElements ?? data?.content?.length ?? 0
+        const totalPages =
+          data?.totalPages ??
+          (data?.size ? Math.ceil(totalElements / data.size) : Math.ceil(totalElements / (pagination.size || 1)))
+        const size = data?.size ?? pagination.size
         setPagination({
-          page: data?.page ?? 0,
-          size: data?.size ?? 0,
-          totalElements: data?.totalElements ?? data?.content?.length ?? 0,
-          totalPages: data?.totalPages ?? 0,
+          page: data?.page ?? page,
+          size,
+          totalElements,
+          totalPages,
         })
+        setHasMore(page + 1 < (totalPages || 0))
       } catch (err) {
         console.error("[Search] Failed to fetch properties", err)
         setError("Could not load properties right now. Please try again.")
+        setHasMore(false)
       } finally {
-        setIsLoading(false)
+        append ? setIsLoadingMore(false) : setIsLoading(false)
       }
     },
-    [priceRange, propertyType, searchQuery, selectedArea]
+    [pagination.size, priceRange, propertyType, searchQuery, selectedArea]
   )
 
   useEffect(() => {
     loadCities()
-    fetchListings(0)
+    fetchListings(0, false)
   }, [fetchListings, loadCities])
 
   // Load wishlist when authentication state changes
@@ -279,15 +288,15 @@ export default function SearchPage() {
                                       </div>
 
                                       <div className="flex justify-end">
-                                          <Button
-                                              className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white"
-                                              onClick={() => fetchListings(0)}
-                                              disabled={isLoading}
-                                          >
-                                              {isLoading ? <Spinner size={18} /> :
-                                                  <Search className="h-4 w-4 mr-2"/>}
-                                              Search Properties
-                                          </Button>
+                      <Button
+                          className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white"
+                          onClick={() => fetchListings(0, false)}
+                          disabled={isLoading}
+                      >
+                          {isLoading ? <Spinner size={18} /> :
+                              <Search className="h-4 w-4 mr-2"/>}
+                          Search Properties
+                      </Button>
                                       </div>
                                   </div>
                               </div>
@@ -359,111 +368,126 @@ export default function SearchPage() {
 
               {/* Listings Grid */}
               {viewMode !== "map" && (
-                  <div
-                      className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6" : "space-y-4"}
-                  >
-                      {isLoading && properties.length === 0 ? (
-                          <div className="col-span-full text-center text-muted-foreground py-8">
-                              <Spinner size={28} />
-                              <p>Loading properties...</p>
-                          </div>
-                      ) : (
-                          properties.map((listing, index) => {
-                              const amenities = listing.keyAmenities || []
-                              const rentLabel = formatRent(listing.monthlyRent)
-                              const locationLabel = formatLocation(listing)
+                  <div className="space-y-4">
+                      <div
+                          className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6" : "space-y-4"}
+                      >
+                          {isLoading && properties.length === 0 ? (
+                              <div className="col-span-full text-center text-muted-foreground py-8">
+                                  <Spinner size={28} />
+                                  <p>Loading properties...</p>
+                              </div>
+                          ) : (
+                              properties.map((listing, index) => {
+                                  const amenities = listing.keyAmenities || []
+                                  const rentLabel = formatRent(listing.monthlyRent)
+                                  const locationLabel = formatLocation(listing)
 
-                              return (
-                                  <motion.div
-                                      key={listing.id || index}
-                                      initial={{ opacity: 0, y: 12 }}
-                                      whileInView={{ opacity: 1, y: 0 }}
-                                      viewport={{ once: true, amount: 0.2 }}
-                                      transition={{ delay: index * 0.03, duration: 0.25, ease: "easeOut" }}
-                                      whileHover={{ y: -6, scale: viewMode === "grid" ? 1.02 : 1, boxShadow: "0 12px 28px rgba(0,0,0,0.12)" }}
-                                      layout
-                                      className={`rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden cursor-pointer ${viewMode === "list" ? "flex flex-col sm:flex-row" : ""}`}
-                                  >
-                                      <div className={viewMode === "list" ? "sm:w-80 sm:flex-shrink-0" : ""}>
-                                            <div className="relative">
-                                                <img
-                                                    src={listing.primaryImageUrl || "/placeholder.svg"}
-                                                  alt={listing.title}
-                                                  className={`object-cover ${viewMode === "list" ? "w-full h-48 sm:h-full" : "w-full h-48"}`}/>
-                                              {listing.isFeatured && (
-                                                  <Badge
-                                                      className="absolute top-3 left-3 bg-orange-500 hover:bg-orange-600 text-white text-xs">
-                                                      Featured
-                                                  </Badge>
-                                              )}
-                                              <button
-                                                  className={`absolute top-3 right-3 p-2 rounded-full transition-colors ${wishlistIds.has(listing.id) ? "bg-red-50 text-red-500" : "bg-white/80 text-muted-foreground"}`}
-                                                  onClick={() => toggleWishlist(listing.id)}
-                                                  aria-label={wishlistIds.has(listing.id) ? "Remove from wishlist" : "Add to wishlist"}
-                                              >
-                                                  <Heart
-                                                      className={`h-4 w-4 ${wishlistIds.has(listing.id) ? "fill-current" : ""}`}/>
-                                              </button>
-                                          </div>
-                                      </div>
-
-                                      <CardContent className={`p-3 sm:p-4 ${viewMode === "list" ? "flex-1" : ""}`}>
-                                          <div className="flex items-start justify-between mb-2">
-                                              <div className="min-w-0 flex-1">
-                                                  <h3 className="font-semibold text-foreground text-base sm:text-lg truncate">
-                                                      {listing.title}
-                                                  </h3>
-                                                  <div
-                                                      className="flex items-center text-xs sm:text-sm text-muted-foreground mt-1">
-                                                      <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0"/>
-                                                      <span className="truncate">{locationLabel}</span>
-                                                  </div>
+                                  return (
+                                      <motion.div
+                                          key={listing.id || index}
+                                          initial={{ opacity: 0, y: 12 }}
+                                          whileInView={{ opacity: 1, y: 0 }}
+                                          viewport={{ once: true, amount: 0.2 }}
+                                          transition={{ delay: index * 0.03, duration: 0.25, ease: "easeOut" }}
+                                          whileHover={{ y: -6, scale: viewMode === "grid" ? 1.02 : 1, boxShadow: "0 12px 28px rgba(0,0,0,0.12)" }}
+                                          layout
+                                          className={`rounded-xl shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden cursor-pointer ${viewMode === "list" ? "flex flex-col sm:flex-row" : ""}`}
+                                      >
+                                          <div className={viewMode === "list" ? "sm:w-80 sm:flex-shrink-0" : ""}>
+                                                <div className="relative">
+                                                    <img
+                                                        src={listing.primaryImageUrl || "/placeholder.svg"}
+                                                      alt={listing.title}
+                                                      className={`object-cover ${viewMode === "list" ? "w-full h-48 sm:h-full" : "w-full h-48"}`}/>
+                                                  {listing.isFeatured && (
+                                                      <Badge
+                                                          className="absolute top-3 left-3 bg-orange-500 hover:bg-orange-600 text-white text-xs">
+                                                          Featured
+                                                      </Badge>
+                                                  )}
+                                                  <button
+                                                      className={`absolute top-3 right-3 p-2 rounded-full transition-colors ${wishlistIds.has(listing.id) ? "bg-red-50 text-red-500" : "bg-white/80 text-muted-foreground"}`}
+                                                      onClick={() => toggleWishlist(listing.id)}
+                                                      aria-label={wishlistIds.has(listing.id) ? "Remove from wishlist" : "Add to wishlist"}
+                                                  >
+                                                      <Heart
+                                                          className={`h-4 w-4 ${wishlistIds.has(listing.id) ? "fill-current" : ""}`}/>
+                                                  </button>
                                               </div>
-                                              <Badge variant="outline"
-                                                     className="text-orange-600 border-orange-600 ml-2 text-xs">
-                                                  {formatPropertyType(listing.propertyType)}
-                                              </Badge>
                                           </div>
 
-                                          <div className="text-xl sm:text-2xl font-bold text-orange-600 mb-3">
-                                              {rentLabel}
-                                              <span
-                                                  className="text-xs sm:text-sm font-normal text-muted-foreground">/month</span>
-                                          </div>
-
-                                          <div className="flex flex-wrap gap-1 mb-4">
-                                              {amenities.slice(0, 3).map((amenity) => (
-                                                  <Badge key={amenity} variant="secondary" className="text-xs">
-                                                      {amenity}
+                                          <CardContent className={`p-3 sm:p-4 ${viewMode === "list" ? "flex-1" : ""}`}>
+                                              <div className="flex items-start justify-between mb-2">
+                                                  <div className="min-w-0 flex-1">
+                                                      <h3 className="font-semibold text-foreground text-base sm:text-lg truncate">
+                                                          {listing.title}
+                                                      </h3>
+                                                      <div
+                                                          className="flex items-center text-xs sm:text-sm text-muted-foreground mt-1">
+                                                          <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0"/>
+                                                          <span className="truncate">{locationLabel}</span>
+                                                      </div>
+                                                  </div>
+                                                  <Badge variant="outline"
+                                                         className="text-orange-600 border-orange-600 ml-2 text-xs">
+                                                      {formatPropertyType(listing.propertyType)}
                                                   </Badge>
-                                              ))}
-                                              {amenities.length > 3 && (
-                                                  <Badge variant="secondary" className="text-xs">
-                                                      +{amenities.length - 3} more
-                                                  </Badge>
-                                              )}
-                                          </div>
+                                              </div>
 
-                                          <div
-                                              className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                                              <Link href={`/listing/${listing.id}`} className="flex-1">
+                                              <div className="text-xl sm:text-2xl font-bold text-orange-600 mb-3">
+                                                  {rentLabel}
+                                                  <span
+                                                      className="text-xs sm:text-sm font-normal text-muted-foreground">/month</span>
+                                              </div>
+
+                                              <div className="flex flex-wrap gap-1 mb-4">
+                                                  {amenities.slice(0, 3).map((amenity) => (
+                                                      <Badge key={amenity} variant="secondary" className="text-xs">
+                                                          {amenity}
+                                                      </Badge>
+                                                  ))}
+                                                  {amenities.length > 3 && (
+                                                      <Badge variant="secondary" className="text-xs">
+                                                          +{amenities.length - 3} more
+                                                      </Badge>
+                                                  )}
+                                              </div>
+
+                                              <div
+                                                  className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                                                  <Link href={`/listing/${listing.id}`} className="flex-1">
+                                                      <Button
+                                                          className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm">
+                                                          View Details
+                                                      </Button>
+                                                  </Link>
                                                   <Button
-                                                      className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm">
-                                                      View Details
+                                                      variant="outline"
+                                                      size="sm"
+                                                      className="border-teal-600 text-teal-600 hover:bg-teal-50 bg-transparent sm:w-auto"
+                                                  >
+                                                      <MessageSquare className="h-4 w-4"/>
                                                   </Button>
-                                              </Link>
-                                              <Button
-                                                  variant="outline"
-                                                  size="sm"
-                                                  className="border-teal-600 text-teal-600 hover:bg-teal-50 bg-transparent sm:w-auto"
-                                              >
-                                                  <MessageSquare className="h-4 w-4"/>
-                                              </Button>
-                                          </div>
-                                      </CardContent>
-                                  </motion.div>
-                              )
-                          })
+                                              </div>
+                                          </CardContent>
+                                      </motion.div>
+                                  )
+                              })
+                          )}
+                      </div>
+
+                      {hasMore && (
+                          <div className="flex justify-center">
+                              <Button
+                                  variant="outline"
+                                  onClick={() => fetchListings(pagination.page + 1, true)}
+                                  disabled={isLoadingMore}
+                                  className="min-w-[160px]"
+                              >
+                                  {isLoadingMore ? <Spinner size={18} /> : "Load more"}
+                              </Button>
+                          </div>
                       )}
                   </div>
               )}

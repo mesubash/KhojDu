@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,6 +17,7 @@ import type { PropertyListItem } from "@/types/property"
 import { toast } from "sonner"
 import { fetchTenantDashboard } from "@/services/tenantService"
 import { Spinner } from "@/components/ui/spinner"
+import { motion } from "framer-motion"
 
 export default function TenantDashboard() {
   const router = useRouter()
@@ -28,7 +29,19 @@ export default function TenantDashboard() {
   const [wishlistCount, setWishlistCount] = useState(0)
   const [inquiryCount, setInquiryCount] = useState(0)
   const [isFetching, setIsFetching] = useState(false)
+  const [wishlistLoadingMore, setWishlistLoadingMore] = useState(false)
+  const [inquiryLoadingMore, setInquiryLoadingMore] = useState(false)
+  const [wishlistPage, setWishlistPage] = useState(0)
+  const [inquiryPage, setInquiryPage] = useState(0)
+  const [wishlistHasMore, setWishlistHasMore] = useState(true)
+  const [inquiryHasMore, setInquiryHasMore] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const pageSize = 5
+  const listContainer = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } } }
+  const fadeItem = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] } },
+  }
   const openWhatsAppMessage = (text: string, phone?: string) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
     const message = text.replace("{origin}", origin)
@@ -53,6 +66,54 @@ export default function TenantDashboard() {
     }
   }
 
+  const loadWishlist = useCallback(
+    async (page = 0, append = false) => {
+      setWishlistLoadingMore(true)
+      try {
+        const resp = await fetchWishlist({ page, size: pageSize })
+        setWishlist((prev) => (append ? [...prev, ...(resp?.content || [])] : resp?.content || []))
+        setWishlistPage(page)
+        const totalPages = resp?.totalPages ?? (resp?.totalElements != null ? Math.ceil(resp.totalElements / pageSize) : undefined)
+        const last = totalPages ? page + 1 >= totalPages : (resp?.content?.length || 0) < pageSize
+        setWishlistHasMore(!last)
+        if (resp?.totalElements !== undefined) {
+          setWishlistCount(resp.totalElements)
+        }
+      } catch (err) {
+        console.error("[TenantDashboard] Failed to load wishlist", err)
+        toast.error("Could not load saved homes.")
+        setWishlistHasMore(false)
+      } finally {
+        setWishlistLoadingMore(false)
+      }
+    },
+    [pageSize],
+  )
+
+  const loadInquiries = useCallback(
+    async (page = 0, append = false) => {
+      setInquiryLoadingMore(true)
+      try {
+        const resp = await fetchTenantInquiries({ page, size: pageSize })
+        setInquiries((prev) => (append ? [...prev, ...(resp?.content || [])] : resp?.content || []))
+        setInquiryPage(page)
+        const totalPages = resp?.totalPages ?? (resp?.totalElements != null ? Math.ceil(resp.totalElements / pageSize) : undefined)
+        const last = totalPages ? page + 1 >= totalPages : (resp?.content?.length || 0) < pageSize
+        setInquiryHasMore(!last)
+        if (resp?.totalElements !== undefined) {
+          setInquiryCount(resp.totalElements)
+        }
+      } catch (err) {
+        console.error("[TenantDashboard] Failed to load inquiries", err)
+        toast.error("Could not load visits/applications.")
+        setInquiryHasMore(false)
+      } finally {
+        setInquiryLoadingMore(false)
+      }
+    },
+    [pageSize],
+  )
+
   useEffect(() => {
     if (isLoading) return
 
@@ -68,24 +129,22 @@ export default function TenantDashboard() {
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== UserRole.TENANT) return
+
     setIsFetching(true)
     Promise.all([
-      fetchWishlist({ page: 0, size: 5 }),
-      fetchTenantInquiries({ page: 0, size: 5 }),
       fetchTenantDashboard(),
       searchProperties({ page: 0, size: 6, sortBy: "createdAt", sortDirection: "DESC" }),
+      loadWishlist(0, false),
+      loadInquiries(0, false),
     ])
-      .then(([wishlistResp, inquiriesResp, dashboardResp, recommendedResp]) => {
-        setWishlist(wishlistResp?.content || [])
-        setInquiries(inquiriesResp?.content || [])
-        setWishlistCount(dashboardResp?.wishlistCount ?? (wishlistResp?.totalElements ?? wishlistResp?.content?.length ?? 0))
-        setInquiryCount(dashboardResp?.inquiryCount ?? (inquiriesResp?.totalElements ?? inquiriesResp?.content?.length ?? 0))
+      .then(([dashboardResp, recommendedResp]) => {
+        setWishlistCount((prev) => dashboardResp?.wishlistCount ?? prev)
+        setInquiryCount((prev) => dashboardResp?.inquiryCount ?? prev)
         if (dashboardResp?.recentWishlist?.length) {
           setRecommended(dashboardResp.recentWishlist as PropertyListItem[])
         } else {
           setRecommended(recommendedResp?.content || [])
         }
-        setRecommended(recommendedResp?.content || [])
         setFetchError(null)
       })
       .catch((err) => {
@@ -94,7 +153,7 @@ export default function TenantDashboard() {
         toast.error("Failed to load some dashboard data.")
       })
       .finally(() => setIsFetching(false))
-  }, [isAuthenticated])
+  }, [isAuthenticated, loadInquiries, loadWishlist, user])
 
   if (isLoading) {
     return (
@@ -116,7 +175,12 @@ export default function TenantDashboard() {
       <Header />
 
       <div className="container-responsive py-10 space-y-8">
-        <div className="bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-orange-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] } }}
+          whileHover={{ y: -4, transition: { duration: 0.15 } }}
+          className="bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-orange-100 dark:border-gray-800 rounded-2xl p-6 shadow-sm cursor-default"
+        >
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <p className="text-sm text-orange-500 font-medium">Tenant Space</p>
@@ -136,7 +200,7 @@ export default function TenantDashboard() {
               </Button>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         <div className="flex flex-wrap gap-2 mb-6">
           {[
@@ -158,44 +222,32 @@ export default function TenantDashboard() {
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Card className="rounded-xl">
-                  <CardContent className="p-5 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Saved homes</p>
-                      <p className="text-2xl font-bold text-foreground">{wishlistCount || wishlist.length}</p>
-                    </div>
-                    <Home className="h-8 w-8 text-orange-500" />
-                  </CardContent>
-                </Card>
-                <Card className="rounded-xl">
-                  <CardContent className="p-5 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Upcoming visits</p>
-                      <p className="text-2xl font-bold text-foreground">{inquiryCount || inquiries.length}</p>
-                    </div>
-                    <Calendar className="h-8 w-8 text-blue-500" />
-                  </CardContent>
-                </Card>
-                <Card className="rounded-xl">
-                  <CardContent className="p-5 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Applications</p>
-                      <p className="text-2xl font-bold text-foreground">{inquiries.length}</p>
-                    </div>
-                    <CheckCircle className="h-8 w-8 text-green-500" />
-                  </CardContent>
-                </Card>
-                <Card className="rounded-xl">
-                  <CardContent className="p-5 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Average rating</p>
-                      <p className="text-2xl font-bold text-foreground">4.6</p>
-                    </div>
-                    <Star className="h-8 w-8 text-yellow-500" />
-                  </CardContent>
-                </Card>
-              </div>
+              <motion.div variants={listContainer} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { label: "Saved homes", value: wishlistCount || wishlist.length, icon: <Home className="h-8 w-8 text-orange-500" /> },
+                  { label: "Upcoming visits", value: inquiryCount || inquiries.length, icon: <Calendar className="h-8 w-8 text-blue-500" /> },
+                  { label: "Applications", value: inquiries.length, icon: <CheckCircle className="h-8 w-8 text-green-500" /> },
+                  { label: "Average rating", value: "4.6", icon: <Star className="h-8 w-8 text-yellow-500" /> },
+                ].map((item) => (
+                  <motion.div
+                    key={item.label}
+                    variants={fadeItem}
+                    whileHover={{ y: -4, scale: 1.01 }}
+                    transition={{ duration: 0.18 }}
+                    className="cursor-pointer"
+                  >
+                    <Card className="rounded-xl bg-white/80 dark:bg-gray-900/60 backdrop-blur border border-orange-100/60 dark:border-gray-800/80 shadow-sm">
+                      <CardContent className="p-5 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">{item.label}</p>
+                          <p className="text-2xl font-bold text-foreground">{item.value}</p>
+                        </div>
+                        {item.icon}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </motion.div>
 
               <Card className="rounded-xl">
                 <CardHeader>
@@ -203,47 +255,59 @@ export default function TenantDashboard() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {fetchError && <div className="text-sm text-red-600">{fetchError}</div>}
+                  {isFetching && (
+                    <div className="flex items-center justify-center py-6">
+                      <Spinner />
+                    </div>
+                  )}
                   {(!isFetching && recommended.length === 0) && (
                     <p className="text-sm text-muted-foreground">No recommendations yet. Try saving homes to get better picks.</p>
                   )}
-                  {(isFetching ? [] : recommended).map((home) => (
-                    <div key={home.id} className="flex items-start justify-between gap-4 border border-border rounded-lg p-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-foreground">{home.title}</h3>
-                          <Badge variant="secondary" className="bg-green-100 text-green-800">
-                            {home.status || (home.isAvailable ? "Available" : "Unavailable")}
-                          </Badge>
+                  <motion.div variants={listContainer} initial="hidden" animate="show" className="space-y-3">
+                    {(isFetching ? [] : recommended).map((home) => (
+                      <motion.div
+                        key={home.id}
+                        variants={fadeItem}
+                        whileHover={{ y: -3, scale: 1.005 }}
+                        className="flex items-start justify-between gap-4 border border-border rounded-lg p-4 bg-white/70 dark:bg-gray-900/40 backdrop-blur cursor-pointer"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-foreground">{home.title}</h3>
+                            <Badge variant="secondary" className="bg-green-100 text-green-800">
+                              {home.status || (home.isAvailable ? "Available" : "Unavailable")}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                            <MapPin className="h-4 w-4" /> {home.city || home.district || home.address || home.location || "Not specified"}
+                          </p>
+                          <div className="flex items-center gap-2 text-sm mt-2">
+                            <span className="font-semibold text-orange-600">Rs {(Number(home.monthlyRent) || 0).toLocaleString()}</span>
+                            <span className="text-muted-foreground">/month</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Type: {home.propertyType || "Property"}</p>
                         </div>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                          <MapPin className="h-4 w-4" /> {home.city || home.district || home.address || home.location || "Not specified"}
-                        </p>
-                        <div className="flex items-center gap-2 text-sm mt-2">
-                          <span className="font-semibold text-orange-600">Rs {(Number(home.monthlyRent) || 0).toLocaleString()}</span>
-                          <span className="text-muted-foreground">/month</span>
+                        <div className="flex flex-col gap-2">
+                          <Button asChild variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50">
+                            <Link href={`/listing/${home.id}`}>View details</Link>
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-orange-500 hover:bg-orange-600 text-white"
+                            onClick={() =>
+                              openWhatsAppForProperty(
+                                home.id,
+                                `Hello! I'd like to book a visit for "{title}". Is it available this week? Link: {link}`,
+                                home.title,
+                              )
+                            }
+                          >
+                            Schedule visit (WhatsApp)
+                          </Button>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">Type: {home.propertyType || "Property"}</p>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <Button asChild variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50">
-                          <Link href={`/listing/${home.id}`}>View details</Link>
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="bg-orange-500 hover:bg-orange-600 text-white"
-                          onClick={() =>
-                            openWhatsAppForProperty(
-                              home.id,
-                              `Hello! I'd like to book a visit for "{title}". Is it available this week? Link: {link}`,
-                              home.title,
-                            )
-                          }
-                        >
-                          Schedule visit (WhatsApp)
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                      </motion.div>
+                    ))}
+                  </motion.div>
                 </CardContent>
               </Card>
             </div>
@@ -254,29 +318,41 @@ export default function TenantDashboard() {
                   <CardTitle className="text-lg">Upcoming visits</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {(isFetching ? [] : inquiries).map((visit) => (
-                    <div key={visit.id} className="border border-border rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium text-foreground">{visit.propertyTitle}</p>
-                        <Badge
-                          variant="secondary"
-                          className={
-                            visit.status === "Confirmed"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }
-                        >
-                          {visit.status}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-4 w-4" /> {visit.updatedAt || "Scheduled"}
-                      </p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <MessageSquare className="h-4 w-4" /> Last message: {visit.lastMessage || "—"}
-                      </p>
+                  {isFetching && (
+                    <div className="flex items-center justify-center py-4">
+                      <Spinner />
                     </div>
-                  ))}
+                  )}
+                  <motion.div variants={listContainer} initial="hidden" animate="show" className="space-y-3">
+                    {(isFetching ? [] : inquiries).map((visit) => (
+                      <motion.div
+                        key={visit.id}
+                        variants={fadeItem}
+                        whileHover={{ y: -2, scale: 1.002 }}
+                        className="border border-border rounded-lg p-3 bg-white/70 dark:bg-gray-900/40 backdrop-blur cursor-pointer"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="font-medium text-foreground">{visit.propertyTitle}</p>
+                          <Badge
+                            variant="secondary"
+                            className={
+                              visit.status === "Confirmed"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }
+                          >
+                            {visit.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-4 w-4" /> {visit.updatedAt || "Scheduled"}
+                        </p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <MessageSquare className="h-4 w-4" /> Last message: {visit.lastMessage || "—"}
+                        </p>
+                      </motion.div>
+                    ))}
+                  </motion.div>
                 </CardContent>
               </Card>
 
@@ -285,24 +361,36 @@ export default function TenantDashboard() {
                   <CardTitle className="text-lg">Applications</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {(isFetching ? [] : inquiries).map((application) => (
-                    <div key={application.id} className="flex items-center justify-between border border-border rounded-lg p-3">
-                      <div>
-                        <p className="font-medium text-foreground">{application.propertyTitle}</p>
-                        <p className="text-xs text-muted-foreground">Updated on {application.updatedAt || "N/A"}</p>
-                      </div>
-                      <Badge
-                        variant="secondary"
-                        className={
-                          application.status === "Approved"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-blue-100 text-blue-800"
-                        }
-                      >
-                        {application.status}
-                      </Badge>
+                  {isFetching && (
+                    <div className="flex items-center justify-center py-4">
+                      <Spinner />
                     </div>
-                  ))}
+                  )}
+                  <motion.div variants={listContainer} initial="hidden" animate="show" className="space-y-3">
+                    {(isFetching ? [] : inquiries).map((application) => (
+                      <motion.div
+                        key={application.id}
+                        variants={fadeItem}
+                        whileHover={{ y: -2, scale: 1.002 }}
+                        className="flex items-center justify-between border border-border rounded-lg p-3 bg-white/70 dark:bg-gray-900/40 backdrop-blur cursor-pointer"
+                      >
+                        <div>
+                          <p className="font-medium text-foreground">{application.propertyTitle}</p>
+                          <p className="text-xs text-muted-foreground">Updated on {application.updatedAt || "N/A"}</p>
+                        </div>
+                        <Badge
+                          variant="secondary"
+                          className={
+                            application.status === "Approved"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-blue-100 text-blue-800"
+                          }
+                        >
+                          {application.status}
+                        </Badge>
+                      </motion.div>
+                    ))}
+                  </motion.div>
                 </CardContent>
               </Card>
 
@@ -339,45 +427,64 @@ export default function TenantDashboard() {
         )}
 
         {activeTab === "saved" && (
-          <div className="space-y-4">
+          <motion.div variants={listContainer} initial="hidden" animate="show" className="space-y-4">
             {(isFetching ? [] : wishlist).map((home) => (
-              <Card key={home.id} className="rounded-xl">
-                <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold text-foreground">{home.title}</h3>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <MapPin className="h-4 w-4" /> {home.city || home.district || home.address || home.location || "Not specified"}
-                    </p>
-                    <div className="flex items-center gap-2 text-sm mt-1">
-                      <span className="font-semibold text-orange-600">Rs {(home.rent || 0).toLocaleString()}</span>
-                      <span className="text-muted-foreground">/month</span>
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                        {home.status || "Saved"}
-                      </Badge>
+              <motion.div
+                key={home.id}
+                variants={fadeItem}
+                whileHover={{ y: -3, scale: 1.01 }}
+                className="cursor-pointer"
+              >
+                <Card className="rounded-xl bg-white/80 dark:bg-gray-900/50 backdrop-blur border border-orange-100/60 dark:border-gray-800/70">
+                  <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-foreground">{home.title}</h3>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <MapPin className="h-4 w-4" /> {home.city || home.district || home.address || home.location || "Not specified"}
+                      </p>
+                      <div className="flex items-center gap-2 text-sm mt-1">
+                        <span className="font-semibold text-orange-600">Rs {(home.rent || 0).toLocaleString()}</span>
+                        <span className="text-muted-foreground">/month</span>
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                          {home.status || "Saved"}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50" asChild>
-                      <Link href={`/listing/${home.id}`}>View</Link>
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-orange-500 hover:bg-orange-600 text-white"
-                      onClick={() =>
-                        openWhatsAppForProperty(
-                          home.id,
-                          `Hi! I'm interested in "{title}". Can we schedule a visit? Link: {link}`,
-                          home.title,
-                        )
-                      }
-                    >
-                      Schedule visit (WhatsApp)
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50" asChild>
+                        <Link href={`/listing/${home.id}`}>View</Link>
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-orange-500 hover:bg-orange-600 text-white"
+                        onClick={() =>
+                          openWhatsAppForProperty(
+                            home.id,
+                            `Hi! I'm interested in "{title}". Can we schedule a visit? Link: {link}`,
+                            home.title,
+                          )
+                        }
+                      >
+                        Schedule visit (WhatsApp)
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
-          </div>
+            {wishlistHasMore && (
+              <div className="flex justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => loadWishlist(wishlistPage + 1, true)}
+                  disabled={wishlistLoadingMore}
+                  className="min-w-[140px]"
+                >
+                  {wishlistLoadingMore ? <Spinner size={16} /> : "Load more"}
+                </Button>
+              </div>
+            )}
+          </motion.div>
         )}
 
         {activeTab === "visits" && (
@@ -387,49 +494,61 @@ export default function TenantDashboard() {
                 <CardTitle className="text-lg">Upcoming visits</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {(isFetching ? [] : inquiries).map((visit) => (
-                  <div key={visit.id} className="border border-border rounded-lg p-3 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-foreground">{visit.propertyTitle}</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Calendar className="h-4 w-4" /> {visit.updatedAt || "Scheduled"}
-                        </p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <MessageSquare className="h-4 w-4" /> {visit.lastMessage || "—"}
-                        </p>
-                      </div>
-                      <Badge
-                        variant="secondary"
-                        className={
-                          visit.status === "Confirmed"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-blue-100 text-blue-800"
-                        }
-                      >
-                        {visit.status}
-                      </Badge>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50" asChild>
-                        <Link href={`/listing/${visit.propertyId}`}>View listing</Link>
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="bg-orange-500 hover:bg-orange-600 text-white"
-                        onClick={() =>
-                          openWhatsAppForProperty(
-                            visit.propertyId,
-                            `Hi! I'm following up on my visit/inquiry (${visit.id}) for "{title}". Can you confirm the schedule? Link: {link}`,
-                            visit.propertyTitle,
-                          )
-                        }
-                      >
-                        Message landlord (WhatsApp)
-                      </Button>
-                    </div>
+                {isFetching && (
+                  <div className="flex items-center justify-center py-4">
+                    <Spinner />
                   </div>
-                ))}
+                )}
+                <motion.div variants={listContainer} initial="hidden" animate="show" className="space-y-3">
+                  {(isFetching ? [] : inquiries).map((visit) => (
+                    <motion.div
+                      key={visit.id}
+                      variants={fadeItem}
+                      whileHover={{ y: -2, scale: 1.002 }}
+                      className="border border-border rounded-lg p-3 space-y-3 bg-white/70 dark:bg-gray-900/40 backdrop-blur cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-foreground">{visit.propertyTitle}</p>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Calendar className="h-4 w-4" /> {visit.updatedAt || "Scheduled"}
+                          </p>
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <MessageSquare className="h-4 w-4" /> {visit.lastMessage || "—"}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="secondary"
+                          className={
+                            visit.status === "Confirmed"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-blue-100 text-blue-800"
+                          }
+                        >
+                          {visit.status}
+                        </Badge>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="border-orange-500 text-orange-600 hover:bg-orange-50" asChild>
+                          <Link href={`/listing/${visit.propertyId}`}>View listing</Link>
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-orange-500 hover:bg-orange-600 text-white"
+                          onClick={() =>
+                            openWhatsAppForProperty(
+                              visit.propertyId,
+                              `Hi! I'm following up on my visit/inquiry (${visit.id}) for "{title}". Can you confirm the schedule? Link: {link}`,
+                              visit.propertyTitle,
+                            )
+                          }
+                        >
+                          Message landlord (WhatsApp)
+                        </Button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
               </CardContent>
             </Card>
 
@@ -438,26 +557,50 @@ export default function TenantDashboard() {
                 <CardTitle className="text-lg">Applications</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {(isFetching ? [] : inquiries).map((application) => (
-                  <div key={application.id} className="flex items-center justify-between border border-border rounded-lg p-3">
-                    <div>
-                      <p className="font-medium text-foreground">{application.propertyTitle}</p>
-                      <p className="text-xs text-muted-foreground">Updated on {application.updatedAt || "N/A"}</p>
-                    </div>
-                    <Badge
-                      variant="secondary"
-                      className={
-                        application.status === "Approved"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-blue-100 text-blue-800"
-                      }
-                    >
-                      {application.status}
-                    </Badge>
+                {isFetching && (
+                  <div className="flex items-center justify-center py-4">
+                    <Spinner />
                   </div>
-                ))}
+                )}
+                <motion.div variants={listContainer} initial="hidden" animate="show" className="space-y-3">
+                  {(isFetching ? [] : inquiries).map((application) => (
+                    <motion.div
+                      key={application.id}
+                      variants={fadeItem}
+                      whileHover={{ y: -2, scale: 1.002 }}
+                      className="flex items-center justify-between border border-border rounded-lg p-3 bg-white/70 dark:bg-gray-900/40 backdrop-blur cursor-pointer"
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">{application.propertyTitle}</p>
+                        <p className="text-xs text-muted-foreground">Updated on {application.updatedAt || "N/A"}</p>
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className={
+                          application.status === "Approved"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-blue-100 text-blue-800"
+                        }
+                      >
+                        {application.status}
+                      </Badge>
+                    </motion.div>
+                  ))}
+                </motion.div>
               </CardContent>
             </Card>
+          </div>
+        )}
+        {activeTab === "visits" && inquiryHasMore && (
+          <div className="flex justify-center pt-2">
+            <Button
+              variant="outline"
+              onClick={() => loadInquiries(inquiryPage + 1, true)}
+              disabled={inquiryLoadingMore}
+              className="min-w-[160px]"
+            >
+              {inquiryLoadingMore ? <Spinner size={16} /> : "Load more"}
+            </Button>
           </div>
         )}
       </div>

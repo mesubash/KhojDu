@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -51,6 +51,12 @@ export default function AdminDashboard() {
   const [verifications, setVerifications] = useState<any[]>([])
   const [listLoading, setListLoading] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
+  const [usersPage, setUsersPage] = useState(0)
+  const [usersHasMore, setUsersHasMore] = useState(false)
+  const [usersLoadingMore, setUsersLoadingMore] = useState(false)
+  const [listingsPage, setListingsPage] = useState(0)
+  const [listingsHasMore, setListingsHasMore] = useState(false)
+  const [listingsLoadingMore, setListingsLoadingMore] = useState(false)
   const glassInput =
     "!bg-white/10 dark:!bg-gray-900/25 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-xl text-foreground placeholder:text-muted-foreground/35 placeholder:font-light transition-all focus:!bg-white/85 dark:focus:!bg-gray-900/70 focus:backdrop-blur-2xl focus:ring-2 focus:ring-orange-300/70 focus:border-orange-300/70"
   const rowVariants = {
@@ -62,6 +68,61 @@ export default function AdminDashboard() {
     show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } },
   }
   const cardHover = { whileHover: { y: -6, scale: 1.01, transition: { duration: 0.18 } } }
+  const pageSize = 10
+
+  const loadUsers = useCallback(
+    async (page = 0, append = false) => {
+      try {
+        append ? setUsersLoadingMore(true) : setListLoading(true)
+        setListError(null)
+        const params: any = { page, size: pageSize, search: searchQuery || undefined }
+        if (filterStatus === "active") params.active = true
+        if (filterStatus === "inactive") params.active = false
+        if (filterStatus === "pending") params.verified = false
+        const response = await fetchAdminUsers(params)
+        setUsersData((prev) => (append ? [...prev, ...(response?.content || [])] : response?.content || []))
+        setUsersPage(page)
+        const totalElements = response?.totalElements ?? response?.content?.length ?? 0
+        const totalPages =
+          response?.totalPages ?? Math.ceil(totalElements / (response?.size || pageSize || 1))
+        setUsersHasMore(page + 1 < (totalPages || 0))
+      } catch (err) {
+        console.error("[AdminDashboard] Failed to load users", err)
+        setListError("Could not load data for this tab.")
+        setUsersHasMore(false)
+      } finally {
+        append ? setUsersLoadingMore(false) : setListLoading(false)
+      }
+    },
+    [filterStatus, searchQuery]
+  )
+
+  const loadListings = useCallback(
+    async (page = 0, append = false) => {
+      try {
+        append ? setListingsLoadingMore(true) : setListLoading(true)
+        setListError(null)
+        const params: any = { page, size: pageSize, search: searchQuery || undefined }
+        if (filterStatus === "active") params.status = "APPROVED"
+        if (filterStatus === "pending") params.status = "PENDING"
+        if (filterStatus === "inactive") params.status = "REJECTED"
+        const response = await fetchAdminProperties(params)
+        setPropertiesData((prev) => (append ? [...prev, ...(response?.content || [])] : response?.content || []))
+        setListingsPage(page)
+        const totalElements = response?.totalElements ?? response?.content?.length ?? 0
+        const totalPages =
+          response?.totalPages ?? Math.ceil(totalElements / (response?.size || pageSize || 1))
+        setListingsHasMore(page + 1 < (totalPages || 0))
+      } catch (err) {
+        console.error("[AdminDashboard] Failed to load listings", err)
+        setListError("Could not load data for this tab.")
+        setListingsHasMore(false)
+      } finally {
+        append ? setListingsLoadingMore(false) : setListLoading(false)
+      }
+    },
+    [filterStatus, searchQuery]
+  )
 
   useEffect(() => {
     if (isLoading) return
@@ -93,37 +154,21 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!isAuthenticated) return
-    const load = async () => {
-      try {
-        setListLoading(true)
-        setListError(null)
-        if (activeTab === "users") {
-          const params: any = { page: 0, size: 10, search: searchQuery || undefined }
-          if (filterStatus === "active") params.active = true
-          if (filterStatus === "inactive") params.active = false
-          if (filterStatus === "pending") params.verified = false
-          const response = await fetchAdminUsers(params)
-          setUsersData(response?.content || [])
-        } else if (activeTab === "listings") {
-          const params: any = { page: 0, size: 10, search: searchQuery || undefined }
-          if (filterStatus === "active") params.status = "APPROVED"
-          if (filterStatus === "pending") params.status = "PENDING"
-          if (filterStatus === "inactive") params.status = "REJECTED"
-          const response = await fetchAdminProperties(params)
-          setPropertiesData(response?.content || [])
-        } else if (activeTab === "reports") {
-          const response = await fetchPendingVerifications(0, 10)
-          setVerifications(response?.content || [])
-        }
-      } catch (err) {
-        console.error("[AdminDashboard] Failed to load list data", err)
-        setListError("Could not load data for this tab.")
-      } finally {
-        setListLoading(false)
-      }
+    if (activeTab === "users") {
+      loadUsers(0, false)
+    } else if (activeTab === "listings") {
+      loadListings(0, false)
+    } else if (activeTab === "reports") {
+      setListLoading(true)
+      fetchPendingVerifications(0, pageSize)
+        .then((response) => setVerifications(response?.content || []))
+        .catch((err) => {
+          console.error("[AdminDashboard] Failed to load list data", err)
+          setListError("Could not load data for this tab.")
+        })
+        .finally(() => setListLoading(false))
     }
-    load()
-  }, [activeTab, filterStatus, searchQuery, isAuthenticated])
+  }, [activeTab, filterStatus, searchQuery, isAuthenticated, loadListings, loadUsers])
 
   if (isLoading) {
     return (
@@ -464,6 +509,18 @@ export default function AdminDashboard() {
                             </motion.div>
                           ))}
                   </motion.div>
+                  {usersHasMore && (
+                    <div className="flex justify-center pt-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => loadUsers(usersPage + 1, true)}
+                        disabled={usersLoadingMore}
+                        className="min-w-[160px]"
+                      >
+                        {usersLoadingMore ? <Spinner size={18} /> : "Load more"}
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
@@ -586,6 +643,18 @@ export default function AdminDashboard() {
                         </motion.div>
                       ))}
                   </motion.div>
+                  {listingsHasMore && (
+                    <div className="flex justify-center pt-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => loadListings(listingsPage + 1, true)}
+                        disabled={listingsLoadingMore}
+                        className="min-w-[160px]"
+                      >
+                        {listingsLoadingMore ? <Spinner size={18} /> : "Load more"}
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
