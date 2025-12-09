@@ -17,6 +17,10 @@ import {
   fetchAdminUsers,
   fetchPendingVerifications,
   AdminUser,
+  updateAdminUserRole,
+  setAdminUserActive,
+  deleteAdminUser,
+  verifyAdminUser,
 } from "@/services/dashboardService"
 import type { PropertyListItem } from "@/types/property"
 import {
@@ -32,14 +36,17 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
+  X,
+  ShieldCheck,
 } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Spinner } from "@/components/ui/spinner"
+import { toast } from "sonner"
 
 export default function AdminDashboard() {
   const router = useRouter()
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user: currentUser, isAuthenticated, isLoading } = useAuth()
   const [activeTab, setActiveTab] = useState("overview")
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
@@ -57,6 +64,16 @@ export default function AdminDashboard() {
   const [listingsPage, setListingsPage] = useState(0)
   const [listingsHasMore, setListingsHasMore] = useState(false)
   const [listingsLoadingMore, setListingsLoadingMore] = useState(false)
+  const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set())
+  const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set())
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [openUserActions, setOpenUserActions] = useState<string | null>(null)
+  const [openListingActions, setOpenListingActions] = useState<string | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string
+    message: string
+    onConfirm: () => void
+  } | null>(null)
   const glassInput =
     "!bg-white/10 dark:!bg-gray-900/25 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-xl text-foreground placeholder:text-muted-foreground/35 placeholder:font-light transition-all focus:!bg-white/85 dark:focus:!bg-gray-900/70 focus:backdrop-blur-2xl focus:ring-2 focus:ring-orange-300/70 focus:border-orange-300/70"
   const rowVariants = {
@@ -86,6 +103,7 @@ export default function AdminDashboard() {
         const totalPages =
           response?.totalPages ?? Math.ceil(totalElements / (response?.size || pageSize || 1))
         setUsersHasMore(page + 1 < (totalPages || 0))
+        if (!append) setSelectedUsers(new Set())
       } catch (err) {
         console.error("[AdminDashboard] Failed to load users", err)
         setListError("Could not load data for this tab.")
@@ -96,6 +114,10 @@ export default function AdminDashboard() {
     },
     [filterStatus, searchQuery]
   )
+
+  const askConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmDialog({ title, message, onConfirm })
+  }
 
   const loadListings = useCallback(
     async (page = 0, append = false) => {
@@ -113,6 +135,7 @@ export default function AdminDashboard() {
         const totalPages =
           response?.totalPages ?? Math.ceil(totalElements / (response?.size || pageSize || 1))
         setListingsHasMore(page + 1 < (totalPages || 0))
+        if (!append) setSelectedListings(new Set())
       } catch (err) {
         console.error("[AdminDashboard] Failed to load listings", err)
         setListError("Could not load data for this tab.")
@@ -124,6 +147,62 @@ export default function AdminDashboard() {
     [filterStatus, searchQuery]
   )
 
+  const handleUserStatus = async (userId: string, active: boolean) => {
+    try {
+      setActionLoading(userId)
+      await setAdminUserActive(userId, active)
+      toast.success(`User ${active ? "activated" : "deactivated"}`)
+      await loadUsers(0, false)
+    } catch (err) {
+      console.error("[Admin] Failed to update user status", err)
+      toast.error("Could not update user status.")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleUserRoleChange = async (userId: string, role: string) => {
+    try {
+      setActionLoading(userId)
+      await updateAdminUserRole(userId, role)
+      toast.success("User role updated")
+      await loadUsers(0, false)
+    } catch (err) {
+      console.error("[Admin] Failed to update user role", err)
+      toast.error("Could not update user role.")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleUserDelete = async (userId: string) => {
+    try {
+      setActionLoading(userId)
+      await deleteAdminUser(userId)
+      toast.success("User deleted")
+      await loadUsers(0, false)
+    } catch (err) {
+      console.error("[Admin] Failed to delete user", err)
+      toast.error("Could not delete user.")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleUserVerify = async (userId: string) => {
+    try {
+      setActionLoading(userId)
+      await verifyAdminUser(userId)
+      toast.success("User verified")
+      await loadUsers(0, false)
+    } catch (err) {
+      console.error("[Admin] Failed to verify user", err)
+      toast.error("Could not verify user.")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   useEffect(() => {
     if (isLoading) return
 
@@ -132,10 +211,10 @@ export default function AdminDashboard() {
       return
     }
 
-    if (user && user.role !== UserRole.ADMIN) {
-      router.replace(getDashboardRouteForRole(user.role))
+    if (currentUser && currentUser.role !== UserRole.ADMIN) {
+      router.replace(getDashboardRouteForRole(currentUser.role))
     }
-  }, [isAuthenticated, isLoading, router, user])
+  }, [isAuthenticated, isLoading, router, currentUser])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -154,11 +233,13 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!isAuthenticated) return
-    if (activeTab === "users") {
+    if (activeTab === "users" || activeTab === "overview") {
       loadUsers(0, false)
-    } else if (activeTab === "listings") {
+    }
+    if (activeTab === "listings" || activeTab === "overview") {
       loadListings(0, false)
-    } else if (activeTab === "reports") {
+    }
+    if (activeTab === "reports") {
       setListLoading(true)
       fetchPendingVerifications(0, pageSize)
         .then((response) => setVerifications(response?.content || []))
@@ -181,7 +262,7 @@ export default function AdminDashboard() {
     )
   }
 
-  if (!isAuthenticated || !user || user.role !== UserRole.ADMIN) {
+  if (!isAuthenticated || !currentUser || currentUser.role !== UserRole.ADMIN) {
     return null
   }
 
@@ -202,16 +283,38 @@ export default function AdminDashboard() {
     </div>
   )
 
-  const renderTableSkeletonRows = (cols: number, rows = 4) =>
-    Array.from({ length: rows }).map((_, rIdx) => (
-      <tr key={`row-skel-${rIdx}`} className="border-b">
-        {Array.from({ length: cols }).map((_, cIdx) => (
-          <td key={`cell-${rIdx}-${cIdx}`} className="p-4">
-            <div className="h-10 rounded-lg bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50 animate-pulse" />
-          </td>
-        ))}
-      </tr>
-    ))
+  const handleBulkDelete = (entity: "users" | "listings") => {
+    const ids = entity === "users" ? Array.from(selectedUsers) : Array.from(selectedListings)
+    const currentId = currentUser?.id
+    const filteredIds = entity === "users" && currentId ? ids.filter((id) => id !== currentId) : ids
+    if (filteredIds.length === 0) {
+      toast.info(`Select ${entity === "users" ? "users" : "listings"} first.`)
+      return
+    }
+    setConfirmDialog({
+      title: `Delete ${filteredIds.length} ${entity === "users" ? "user(s)" : "listing(s)"}?`,
+      message: "This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          setActionLoading("bulk")
+          if (entity === "users") {
+            await Promise.all(filteredIds.map((id) => deleteAdminUser(id)))
+            setSelectedUsers(new Set())
+            await loadUsers(0, false)
+          } else {
+            // For listings, only UI placeholder until API exists
+            toast.info("Bulk delete for listings is not wired to backend yet.")
+          }
+          toast.success("Bulk delete completed")
+        } catch (err) {
+          console.error("[Admin] Bulk delete failed", err)
+          toast.error("Bulk delete failed.")
+        } finally {
+          setActionLoading(null)
+        }
+      },
+    })
+  }
 
   const statCards = [
     { title: "Total Users", value: stats?.totalUsers ?? "--", icon: Users, color: "text-orange-600" },
@@ -310,7 +413,11 @@ export default function AdminDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {listLoading && <p className="text-sm text-muted-foreground">Loading users...</p>}
+                      {listLoading && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Spinner size={18} /> Loading users...
+                        </div>
+                      )}
                       <motion.div variants={listContainer} initial="hidden" animate="show" className="space-y-3">
                         {!listLoading &&
                           usersData.slice(0, 5).map((user, idx) => (
@@ -319,7 +426,7 @@ export default function AdminDashboard() {
                               whileHover={{ y: -2 }}
                               variants={rowVariants}
                               custom={idx}
-                              className="flex items-center justify-between cursor-pointer"
+                              className="flex items-center justify-between"
                             >
                               <div>
                                 <p className="font-medium">{user.fullName}</p>
@@ -354,7 +461,11 @@ export default function AdminDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {listLoading && <p className="text-sm text-muted-foreground">Loading listings...</p>}
+                      {listLoading && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Spinner size={18} /> Loading listings...
+                        </div>
+                      )}
                       <motion.div variants={listContainer} initial="hidden" animate="show" className="space-y-3">
                         {!listLoading &&
                           propertiesData.slice(0, 5).map((listing, idx) => (
@@ -363,7 +474,7 @@ export default function AdminDashboard() {
                               whileHover={{ y: -2 }}
                               variants={rowVariants}
                               custom={idx}
-                              className="flex items-center justify-between cursor-pointer"
+                              className="flex items-center justify-between"
                             >
                               <div>
                                 <p className="font-medium">{listing.title}</p>
@@ -407,7 +518,7 @@ export default function AdminDashboard() {
               {...cardHover}
             >
               <Card className="rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-border/60">
-                <CardContent className="p-6">
+                <CardContent className="p-6 space-y-4">
                   <div className="flex flex-col sm:flex-row gap-4">
                     <div className="flex-1 relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -429,6 +540,32 @@ export default function AdminDashboard() {
                         <SelectItem value="inactive">Inactive</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Button variant="outline" size="sm" onClick={() => setSelectedUsers(new Set())}>
+                      Clear selection
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const ids = usersData
+                          .map((u) => u.id)
+                          .filter((id) => id && id !== currentUser?.id)
+                        setSelectedUsers(new Set(ids))
+                      }}
+                    >
+                      Select all
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleBulkDelete("users")}
+                      disabled={selectedUsers.size === 0}
+                      className="bg-red-600 hover:bg-red-700 text-white border border-red-200 shadow-sm"
+                    >
+                      Delete selected
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -455,59 +592,155 @@ export default function AdminDashboard() {
                   {!listLoading && usersData.length === 0 && (
                     <p className="text-sm text-muted-foreground px-2">No users found for the current filter.</p>
                   )}
-                  <motion.div
-                    variants={listContainer}
-                    initial="hidden"
-                    animate="show"
-                    className="space-y-3"
-                  >
-                        {!listLoading &&
-                          usersData.map((user, idx) => (
-                            <motion.div
-                              key={user.id}
-                              variants={rowVariants}
-                              custom={idx}
-                              whileHover={{ y: -3, scale: 1.002 }}
-                              className="p-4 rounded-xl bg-white/60 dark:bg-gray-900/50 backdrop-blur-xl border border-white/25 dark:border-white/10 hover:border-orange-300/70 hover:shadow-lg transition cursor-pointer"
-                            >
-                              <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-center">
-                                <div className="space-y-1 col-span-2">
-                                  <p className="font-semibold text-foreground">{user.fullName}</p>
-                                  <p className="text-sm text-muted-foreground">{user.email}</p>
-                                  <p className="text-xs text-muted-foreground">{user.phone || "No phone"}</p>
-                                </div>
-                                <div className="flex flex-wrap gap-2 items-center">
-                                  <Badge variant="outline" className="w-fit">{user.role}</Badge>
-                                  <Badge
-                                    variant={user.isActive ? "default" : "secondary"}
-                                    className={`text-xs w-fit ${user.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+                  <motion.div variants={listContainer} initial="hidden" animate="show" className="space-y-3">
+                    {!listLoading &&
+                      usersData.map((user, idx) => (
+                        <motion.div
+                          key={user.id}
+                          variants={rowVariants}
+                          custom={idx}
+                          whileHover={{ y: -3, scale: 1.002 }}
+                          className="p-4 rounded-xl bg-white/60 dark:bg-gray-900/50 backdrop-blur-xl border border-white/25 dark:border-white/10 hover:border-orange-300/70 hover:shadow-lg transition"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-center">
+                            <div className="flex items-start gap-3 col-span-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedUsers.has(user.id)}
+                                disabled={user.id === currentUser?.id}
+                                onChange={(e) => {
+                                  if (user.id === currentUser?.id) return
+                                  setSelectedUsers((prev) => {
+                                    const next = new Set(prev)
+                                    if (e.target.checked) next.add(user.id)
+                                    else next.delete(user.id)
+                                    return next
+                                  })
+                                }}
+                                className="mt-1 disabled:cursor-not-allowed"
+                              />
+                              <div className="space-y-1">
+                                <p className="font-semibold text-foreground">{user.fullName}</p>
+                                <p className="text-sm text-muted-foreground">{user.email}</p>
+                                <p className="text-xs text-muted-foreground">{user.phone || "No phone"}</p>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2 items-center">
+                              <Badge variant="outline" className="w-fit">
+                                {user.role}
+                              </Badge>
+                              <Badge
+                                variant={user.isActive ? "default" : "secondary"}
+                                className={`text-xs w-fit ${user.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+                              >
+                                {user.isActive ? "Active" : "Inactive"}
+                              </Badge>
+                              {user.isVerified ? (
+                                <Badge variant="outline" className="text-xs">
+                                  Verified
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-xs border-yellow-300 text-yellow-700">
+                                  Unverified
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                              <span>Joined {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</span>
+                              <span className="text-xs">
+                                Status:{" "}
+                                <Badge variant="outline" className="text-xs">
+                                  {user.isVerified ? "Verified" : "Unverified"}
+                                </Badge>
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-start md:justify-end gap-2">
+                              {openUserActions === user.id ? (
+                                <>
+                                  <Select
+                                    value={user.role}
+                                onValueChange={(value) =>
+                                  askConfirm("Change role?", "This will update the user's role immediately.", () =>
+                                    handleUserRoleChange(user.id, value),
+                                  )
+                                }
+                                disabled={actionLoading === user.id}
+                              >
+                                    <SelectTrigger className="w-24 h-9 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="TENANT">TENANT</SelectItem>
+                                      <SelectItem value="LANDLORD">LANDLORD</SelectItem>
+                                      <SelectItem value="ADMIN">ADMIN</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Button
+                                    variant={user.isActive ? "outline" : "default"}
+                                    size="sm"
+                                    className={user.isActive ? "border-red-200 text-red-600" : "bg-green-600 text-white"}
+                                    onClick={() =>
+                                  askConfirm(
+                                    user.isActive ? "Deactivate user?" : "Activate user?",
+                                    user.isActive
+                                      ? "The user will not be able to log in until reactivated."
+                                      : "The user will be able to access their account.",
+                                    () => handleUserStatus(user.id, !user.isActive),
+                                  )
+                                      }
+                                      disabled={actionLoading === user.id}
+                                    >
+                                      {user.isActive ? (
+                                        <>
+                                            <X className="h-4 w-4 mr-1" /> Deactivate
+                                        </>
+                                      ) : (
+                                        <>
+                                            <CheckCircle className="h-4 w-4 mr-1" /> Activate
+                                        </>
+                                      )}
+                                    </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-700 disabled:text-muted-foreground disabled:cursor-not-allowed"
+                                    onClick={() =>
+                                      askConfirm(
+                                        "Delete user?",
+                                        "This action cannot be undone.",
+                                        () => handleUserDelete(user.id),
+                                      )
+                                    }
+                                    disabled={actionLoading === user.id || user.id === currentUser?.id}
                                   >
-                                    {user.isActive ? "Active" : "Inactive"}
-                                  </Badge>
-                                </div>
-                                <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                                  <span>Joined {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</span>
-                                  <span className="text-xs">
-                                    Status:{" "}
-                                    <Badge variant="outline" className="text-xs">
-                                      {user.isVerified ? "Verified" : "Unverified"}
-                                    </Badge>
-                                  </span>
-                                </div>
-                                <div className="flex items-center justify-start md:justify-end gap-2">
-                                  <Button variant="ghost" size="sm">
-                                    <Eye className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="sm">
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
-                                </div>
-                              </div>
-                            </motion.div>
-                          ))}
+                                  {!user.isVerified && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-green-600 hover:text-green-700"
+                                      onClick={() =>
+                                        askConfirm("Verify user?", "Mark this user as verified?", () => handleUserVerify(user.id))
+                                      }
+                                      disabled={actionLoading === user.id}
+                                    >
+                                    <ShieldCheck className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  <Button variant="ghost" size="sm" onClick={() => setOpenUserActions(null)}>
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button variant="outline" size="sm" onClick={() => setOpenUserActions(user.id)}>
+                                  Manage
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
                   </motion.div>
                   {usersHasMore && (
                     <div className="flex justify-center pt-2">
@@ -561,6 +794,23 @@ export default function AdminDashboard() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Button variant="outline" size="sm" onClick={() => setSelectedListings(new Set())}>
+                      Clear selection
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setSelectedListings(new Set(propertiesData.map((p) => p.id)))}>
+                      Select all
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleBulkDelete("listings")}
+                      disabled={selectedListings.size === 0}
+                      className="bg-red-600 hover:bg-red-700 text-white border border-red-200 shadow-sm"
+                    >
+                      Delete selected
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -594,20 +844,37 @@ export default function AdminDashboard() {
                           variants={rowVariants}
                           custom={idx}
                           whileHover={{ y: -3, scale: 1.002 }}
-                          className="flex flex-col md:grid md:grid-cols-5 md:auto-cols-fr md:items-center gap-3 p-4 rounded-xl bg-white/60 dark:bg-gray-900/50 backdrop-blur-xl border border-white/20 dark:border-white/10 cursor-pointer hover:border-orange-300/70 hover:shadow-lg transition"
+                          className="flex flex-col md:grid md:grid-cols-5 md:auto-cols-fr md:items-center gap-3 p-4 rounded-xl bg-white/60 dark:bg-gray-900/50 backdrop-blur-xl border border-white/20 dark:border-white/10 hover:border-orange-300/70 hover:shadow-lg transition"
                         >
-                          <div className="space-y-1 md:col-span-2">
-                            <p className="font-semibold text-foreground">{listing.title}</p>
-                            <p className="text-sm text-muted-foreground">by {listing.landlordName || "Unknown"}</p>
-                            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                              <span>City: {listing.city || listing.district || "—"}</span>
-                              <span>Type: {listing.propertyType || "—"}</span>
+                          <div className="flex items-start gap-3 md:col-span-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedListings.has(listing.id)}
+                              onChange={(e) => {
+                                setSelectedListings((prev) => {
+                                  const next = new Set(prev)
+                                  if (e.target.checked) next.add(listing.id)
+                                  else next.delete(listing.id)
+                                  return next
+                                })
+                              }}
+                              className="mt-1"
+                            />
+                            <div className="space-y-1">
+                              <p className="font-semibold text-foreground">{listing.title}</p>
+                              <p className="text-sm text-muted-foreground">by {listing.landlordName || "Unknown"}</p>
+                              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                <span>City: {listing.city || listing.district || "—"}</span>
+                                <span>Type: {listing.propertyType || "—"}</span>
+                              </div>
                             </div>
                           </div>
                           <div className="flex flex-col gap-1">
                             <span className="text-sm text-muted-foreground">Rent</span>
                             <p className="font-medium text-foreground">Rs {(Number(listing.monthlyRent) || 0).toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">Deposits: {listing.securityDeposit ? `Rs ${(Number(listing.securityDeposit) || 0).toLocaleString()}` : "—"}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Deposits: {listing.securityDeposit ? `Rs ${(Number(listing.securityDeposit) || 0).toLocaleString()}` : "—"}
+                            </p>
                           </div>
                           <div className="flex flex-col gap-1 text-sm text-muted-foreground">
                             <span>Views: {listing.viewCount ?? "—"}</span>
@@ -618,9 +885,7 @@ export default function AdminDashboard() {
                             <Badge
                               variant={listing.status === "APPROVED" ? "default" : "secondary"}
                               className={`text-xs ${
-                                listing.status === "APPROVED"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-yellow-100 text-yellow-800"
+                                listing.status === "APPROVED" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
                               }`}
                             >
                               {listing.status || "UNKNOWN"}
@@ -630,15 +895,26 @@ export default function AdminDashboard() {
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2 md:justify-end md:col-span-1 flex-nowrap w-full">
-                            <Button variant="ghost" size="sm">
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <XCircle className="h-4 w-4 text-red-600" />
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
+                            {openListingActions === listing.id ? (
+                              <>
+                                <Button variant="ghost" size="sm">
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                </Button>
+                                <Button variant="ghost" size="sm">
+                                  <XCircle className="h-4 w-4 text-red-600" />
+                                </Button>
+                                <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => setOpenListingActions(null)}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button variant="outline" size="sm" onClick={() => setOpenListingActions(listing.id)}>
+                                More
+                              </Button>
+                            )}
                           </div>
                         </motion.div>
                       ))}
@@ -709,6 +985,33 @@ export default function AdminDashboard() {
           </div>
         )}
       </motion.div>
+
+      {/* Confirmation modal */}
+      {confirmDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-border max-w-sm w-full p-6 space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-lg font-semibold text-foreground">{confirmDialog.title}</h3>
+              <p className="text-sm text-muted-foreground">{confirmDialog.message}</p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" className="border-muted text-foreground hover:bg-muted/40" onClick={() => setConfirmDialog(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-500 dark:hover:bg-red-400"
+                onClick={() => {
+                  confirmDialog.onConfirm()
+                  setConfirmDialog(null)
+                }}
+              >
+                Confirm
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -48,12 +48,7 @@ export async function fetchAdminUsers(params: {
   if (verified !== undefined) query.set("verified", String(verified))
   if (active !== undefined) query.set("active", String(active))
 
-  const cacheKey = `admin-users-${query.toString()}`
-  const cached = getCached<PagedResponse<AdminUser>>(cacheKey)
-  if (cached) return cached
-
   const { data } = await axiosInstance.get<ApiResponse<PagedResponse<AdminUser>>>(`/admin/users?${query.toString()}`)
-  setCached(cacheKey, data.data, 30_000)
   return data.data
 }
 
@@ -77,11 +72,28 @@ export async function fetchAdminProperties(params: { page?: number; size?: numbe
   if (search) query.set("search", search)
   if (status) query.set("status", status)
 
-  const cacheKey = `admin-props-${query.toString()}`
-  const cached = getCached<PagedResponse<PropertyListItem>>(cacheKey)
-  if (cached) return cached
   const { data } = await axiosInstance.get<ApiResponse<PagedResponse<PropertyListItem>>>(`/admin/properties?${query.toString()}`)
-  setCached(cacheKey, data.data, 30_000)
+  return data.data
+}
+
+export async function updateAdminUserRole(userId: string, role: string) {
+  const { data } = await axiosInstance.put<ApiResponse<any>>(`/admin/users/${userId}/role?role=${role}`)
+  return data.data
+}
+
+export async function setAdminUserActive(userId: string, active: boolean) {
+  const path = active ? "activate" : "deactivate"
+  const { data } = await axiosInstance.put<ApiResponse<any>>(`/admin/users/${userId}/${path}`)
+  return data.data
+}
+
+export async function deleteAdminUser(userId: string) {
+  const { data } = await axiosInstance.delete<ApiResponse<any>>(`/admin/users/${userId}`)
+  return data.data
+}
+
+export async function verifyAdminUser(userId: string) {
+  const { data } = await axiosInstance.put<ApiResponse<any>>(`/admin/users/${userId}/verify`)
   return data.data
 }
 
