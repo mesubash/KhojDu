@@ -28,6 +28,7 @@ import {
   Flag,
   Calendar,
   X,
+  Loader2,
 } from "lucide-react"
 import Link from "next/link"
 import { GoogleMaps } from "@/components/google-maps"
@@ -35,9 +36,9 @@ import { Header } from "@/components/header"
 import { useParams, useRouter } from "next/navigation"
 import { fetchProperty, fetchPropertyReviewSummary, fetchPropertyReviews, submitReview } from "@/services/propertyService"
 import type { PropertyDetail } from "@/types/property"
-import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import type { ReviewSummary, Review } from "@/types/review"
+import { Spinner } from "@/components/ui/spinner"
 import { useAuth } from "@/context/AuthContext"
 import { addToWishlist, removeFromWishlist, checkWishlist } from "@/services/wishlistService"
 
@@ -311,7 +312,7 @@ export default function ListingDetailPage() {
       <div className="page-shell">
         <Header />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
-          <Loader2 className="h-10 w-10 animate-spin text-orange-500 mx-auto mb-4" />
+          <Spinner size={40} />
           <p className="text-muted-foreground">Loading listing...</p>
         </div>
       </div>

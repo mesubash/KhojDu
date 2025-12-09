@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Search, MapPin, Heart, MessageSquare, Grid3X3, List, Loader2 } from "lucide-react"
+import { Search, MapPin, Heart, MessageSquare, Grid3X3, List } from "lucide-react"
 import Link from "next/link"
 import { PropertyMap } from "@/components/property-map"
 import { Header } from "@/components/header"
@@ -19,6 +19,7 @@ import { fetchWishlist } from "@/services/dashboardService"
 import { addToWishlist, removeFromWishlist } from "@/services/wishlistService"
 import { useAuth } from "@/context/AuthContext"
 import { motion } from "framer-motion"
+import { Spinner } from "@/components/ui/spinner"
 
 const defaultAreas = [
   "Thamel",
@@ -283,7 +284,7 @@ export default function SearchPage() {
                                               onClick={() => fetchListings(0)}
                                               disabled={isLoading}
                                           >
-                                              {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin"/> :
+                                              {isLoading ? <Spinner size={18} /> :
                                                   <Search className="h-4 w-4 mr-2"/>}
                                               Search Properties
                                           </Button>
@@ -363,7 +364,7 @@ export default function SearchPage() {
                   >
                       {isLoading && properties.length === 0 ? (
                           <div className="col-span-full text-center text-muted-foreground py-8">
-                              <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2"/>
+                              <Spinner size={28} />
                               <p>Loading properties...</p>
                           </div>
                       ) : (

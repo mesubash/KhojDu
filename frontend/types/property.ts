@@ -12,6 +12,7 @@ export interface PropertyListItem {
   city?: string
   district?: string
   monthlyRent?: number | string
+  securityDeposit?: number | string
   bedrooms?: number
   bathrooms?: number
   totalArea?: number

@@ -16,6 +16,7 @@ import { searchProperties, fetchProperty } from "@/services/propertyService"
 import type { PropertyListItem } from "@/types/property"
 import { toast } from "sonner"
 import { fetchTenantDashboard } from "@/services/tenantService"
+import { Spinner } from "@/components/ui/spinner"
 
 export default function TenantDashboard() {
   const router = useRouter()
@@ -98,8 +99,8 @@ export default function TenantDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="text-center">
-          <div className="h-12 w-12 rounded-full border-2 border-orange-500 border-t-transparent animate-spin mx-auto mb-4" />
+        <div className="text-center space-y-4">
+          <Spinner size={40} />
           <p className="text-muted-foreground">Loading your dashboard...</p>
         </div>
       </div>

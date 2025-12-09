@@ -35,6 +35,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { motion } from "framer-motion"
+import { Spinner } from "@/components/ui/spinner"
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -127,8 +128,8 @@ export default function AdminDashboard() {
   if (isLoading) {
     return (
       <div className="page-shell flex items-center justify-center">
-        <div className="text-center">
-          <div className="h-12 w-12 rounded-full border-2 border-orange-500 border-t-transparent animate-spin mx-auto mb-4" />
+        <div className="text-center space-y-4">
+          <Spinner size={40} />
           <p className="text-muted-foreground">Checking admin access...</p>
         </div>
       </div>
@@ -402,8 +403,8 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {listLoading && (
-                    <div className="space-y-2">
-                      {renderTableSkeletonRows(1, 3)}
+                    <div className="flex justify-center py-6">
+                      <Spinner size={36} />
                     </div>
                   )}
                   {!listLoading && usersData.length === 0 && (
@@ -521,7 +522,9 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {listLoading && (
-                    <div className="space-y-2">{renderTableSkeletonRows(1, 3)}</div>
+                    <div className="flex justify-center py-6">
+                      <Spinner size={36} />
+                    </div>
                   )}
                   {!listLoading && propertiesData.length === 0 && (
                     <p className="text-sm text-muted-foreground px-2">No listings found for the current filter.</p>
@@ -534,16 +537,25 @@ export default function AdminDashboard() {
                           variants={rowVariants}
                           custom={idx}
                           whileHover={{ y: -3, scale: 1.002 }}
-                          className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-4 rounded-xl bg-white/60 dark:bg-gray-900/50 backdrop-blur-xl border border-white/20 dark:border-white/10 cursor-pointer"
+                          className="flex flex-col md:grid md:grid-cols-5 md:auto-cols-fr md:items-center gap-3 p-4 rounded-xl bg-white/60 dark:bg-gray-900/50 backdrop-blur-xl border border-white/20 dark:border-white/10 cursor-pointer hover:border-orange-300/70 hover:shadow-lg transition"
                         >
-                          <div className="space-y-1">
+                          <div className="space-y-1 md:col-span-2">
                             <p className="font-semibold text-foreground">{listing.title}</p>
                             <p className="text-sm text-muted-foreground">by {listing.landlordName || "Unknown"}</p>
                             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                              <span>Rent: Rs {(Number(listing.monthlyRent) || 0).toLocaleString()}</span>
-                              <span>Views: {listing.viewCount ?? "—"}</span>
-                              <span>{listing.createdAt ? new Date(listing.createdAt).toLocaleDateString() : "—"}</span>
+                              <span>City: {listing.city || listing.district || "—"}</span>
+                              <span>Type: {listing.propertyType || "—"}</span>
                             </div>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-sm text-muted-foreground">Rent</span>
+                            <p className="font-medium text-foreground">Rs {(Number(listing.monthlyRent) || 0).toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground">Deposits: {listing.securityDeposit ? `Rs ${(Number(listing.securityDeposit) || 0).toLocaleString()}` : "—"}</p>
+                          </div>
+                          <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                            <span>Views: {listing.viewCount ?? "—"}</span>
+                            <span>Rating: {listing.averageRating ?? "—"}</span>
+                            <span>{listing.createdAt ? new Date(listing.createdAt).toLocaleDateString() : "—"}</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <Badge
@@ -556,17 +568,20 @@ export default function AdminDashboard() {
                             >
                               {listing.status || "UNKNOWN"}
                             </Badge>
-                            <div className="flex items-center space-x-2">
-                              <Button variant="ghost" size="sm">
-                                <CheckCircle className="h-4 w-4 text-green-600" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <XCircle className="h-4 w-4 text-red-600" />
-                              </Button>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {listing.isFeatured ? "Featured" : "Standard"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 md:justify-end md:col-span-1 flex-nowrap w-full">
+                            <Button variant="ghost" size="sm">
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            </Button>
+                            <Button variant="ghost" size="sm">
+                              <XCircle className="h-4 w-4 text-red-600" />
+                            </Button>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
                           </div>
                         </motion.div>
                       ))}

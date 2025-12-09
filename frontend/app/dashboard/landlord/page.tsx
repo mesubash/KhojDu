@@ -31,6 +31,7 @@ import { fetchLandlordProperties, LandlordProperty } from "@/services/dashboardS
 import { deleteProperty, togglePropertyAvailability } from "@/services/propertyService"
 import { toast } from "sonner"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { Spinner } from "@/components/ui/spinner"
 
 export default function LandlordDashboard() {
   const router = useRouter()
@@ -90,8 +91,8 @@ export default function LandlordDashboard() {
   if (isLoading) {
     return (
       <div className="page-shell flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+        <div className="text-center space-y-4">
+          <Spinner size={40} />
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>

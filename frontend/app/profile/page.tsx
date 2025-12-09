@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { fetchMyReviews } from "@/services/propertyService"
 import type { Review } from "@/types/review"
 import { format } from "date-fns"
+import { Spinner } from "@/components/ui/spinner"
 
 const defaultUser: User = {
   id: "",
@@ -210,7 +211,7 @@ export default function ProfilePage() {
       <div className="page-shell">
         <Header />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
-          <Loader2 className="h-10 w-10 animate-spin text-orange-500 mx-auto mb-4" />
+          <Spinner size={40} />
           <p className="text-muted-foreground">Loading your profile...</p>
         </div>
       </div>
