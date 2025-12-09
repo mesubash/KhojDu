@@ -41,6 +41,7 @@ import type { ReviewSummary, Review } from "@/types/review"
 import { Spinner } from "@/components/ui/spinner"
 import { useAuth } from "@/context/AuthContext"
 import { addToWishlist, removeFromWishlist, checkWishlist } from "@/services/wishlistService"
+import { motion } from "framer-motion"
 
 export default function ListingDetailPage() {
   const params = useParams()
@@ -57,6 +58,10 @@ export default function ListingDetailPage() {
   const [isLiked, setIsLiked] = useState(false)
   const [isInWishlist, setIsInWishlist] = useState(false)
   const [wishlistLoading, setWishlistLoading] = useState(false)
+  const [loadingReviews, setLoadingReviews] = useState(false)
+  const [loadingMoreReviews, setLoadingMoreReviews] = useState(false)
+  const [reviewsPage, setReviewsPage] = useState(0)
+  const [reviewsHasMore, setReviewsHasMore] = useState(false)
   const [submittingReview, setSubmittingReview] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [reviewForm, setReviewForm] = useState({
@@ -82,17 +87,24 @@ export default function ListingDetailPage() {
         setCurrentImageIndex(0)
 
         // load reviews in parallel
+        setLoadingReviews(true)
         const [summary, reviewPage] = await Promise.all([
           fetchPropertyReviewSummary(propertyId),
           fetchPropertyReviews(propertyId, 0, 5),
         ])
         setReviewSummary(summary || null)
         setReviews(reviewPage?.content || [])
+        setReviewsPage(reviewPage?.page ?? 0)
+        const totalPages =
+          reviewPage?.totalPages ??
+          (reviewPage?.totalElements ? Math.ceil(reviewPage.totalElements / (reviewPage.size || 5)) : 1)
+        setReviewsHasMore((reviewPage?.page ?? 0) + 1 < (totalPages || 0))
       } catch (err: any) {
         console.error("[Listing] Failed to load property", err)
         setError("Unable to load this listing right now.")
         toast.error("Could not load listing.")
       } finally {
+        setLoadingReviews(false)
         setIsLoading(false)
       }
     }
@@ -188,6 +200,11 @@ export default function ListingDetailPage() {
         ])
         setReviewSummary(summary || null)
         setReviews(reviewPage?.content || [])
+        setReviewsPage(reviewPage?.page ?? 0)
+        const totalPages =
+          reviewPage?.totalPages ??
+          (reviewPage?.totalElements ? Math.ceil(reviewPage.totalElements / (reviewPage.size || 5)) : 1)
+        setReviewsHasMore((reviewPage?.page ?? 0) + 1 < (totalPages || 0))
         setShowReviewModal(false)
         setReviewForm({ rating: 0, review: "", stayDuration: "" })
       } catch (err) {
@@ -258,6 +275,28 @@ export default function ListingDetailPage() {
       label: a.name,
       icon: getAmenityIcon(a.name),
     })) || []
+  const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } }
+
+  const loadMoreReviews = useCallback(async () => {
+    if (!propertyId || loadingMoreReviews || !reviewsHasMore) return
+    setLoadingMoreReviews(true)
+    try {
+      const nextPage = reviewsPage + 1
+      const reviewPage = await fetchPropertyReviews(propertyId, nextPage, 5)
+      setReviews((prev) => [...prev, ...(reviewPage?.content || [])])
+      setReviewsPage(reviewPage?.page ?? nextPage)
+      const totalPages =
+        reviewPage?.totalPages ??
+        (reviewPage?.totalElements ? Math.ceil(reviewPage.totalElements / (reviewPage.size || 5)) : nextPage + 1)
+      setReviewsHasMore((reviewPage?.page ?? nextPage) + 1 < (totalPages || 0))
+    } catch (err) {
+      console.error("[Listing] Failed to load more reviews", err)
+      toast.error("Could not load more reviews.")
+      setReviewsHasMore(false)
+    } finally {
+      setLoadingMoreReviews(false)
+    }
+  }, [loadingMoreReviews, propertyId, reviewsHasMore, reviewsPage])
   const loadWishlistStatus = useCallback(async () => {
     if (!propertyId) return
     try {
@@ -336,25 +375,35 @@ export default function ListingDetailPage() {
       <Header />
       
       {/* Back to Search Navigation */}
-      <div className="bg-card border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <Link href="/search" className="flex items-center space-x-2 text-orange-600 hover:text-orange-700">
+      <div className="bg-card border-b border-border/60 backdrop-blur-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center">
+          <Link
+            href="/search"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/70 dark:bg-gray-900/60 border border-white/50 dark:border-white/10 shadow-sm backdrop-blur-2xl text-orange-600 hover:text-orange-700 hover:shadow-lg transition-all"
+          >
             <ArrowLeft className="h-4 w-4" />
-            <span>Back to Search</span>
+            <span className="font-medium">Back to Search</span>
           </Link>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <motion.div
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+        initial="hidden"
+        animate="show"
+        variants={{ show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } } }}
+      >
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Image Carousel */}
+            <motion.div variants={fadeUp}>
             <Card className="overflow-hidden rounded-xl bg-card">
               <div className="relative">
                 <img
                   src={images[currentImageIndex] || "/placeholder.svg"}
                   alt={`${property.title} - Image ${currentImageIndex + 1}`}
+                  loading="lazy"
                   className="w-full h-96 object-cover"
                 />
 
@@ -386,7 +435,17 @@ export default function ListingDetailPage() {
                   >
                     <Heart className={`h-5 w-5 ${isLiked || isInWishlist ? "text-red-500 fill-current" : "text-muted-foreground"}`} />
                   </button>
-                  <button className="bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 rounded-full p-2 shadow-lg transition-all">
+                  <button
+                    onClick={() => {
+                      const url = typeof window !== "undefined" ? window.location.href : ""
+                      if (navigator?.clipboard && url) {
+                        navigator.clipboard.writeText(url).then(() => toast.success("Link copied to clipboard!"))
+                      } else {
+                        toast.error("Unable to copy link")
+                      }
+                    }}
+                    className="bg-white/90 dark:bg-gray-800/90 hover:bg-white dark:hover:bg-gray-800 rounded-full p-2 shadow-lg transition-all"
+                  >
                     <Share2 className="h-5 w-5 text-muted-foreground" />
                   </button>
                 </div>
@@ -414,9 +473,11 @@ export default function ListingDetailPage() {
                 </div>
               </div>
             </Card>
+            </motion.div>
 
             {/* Property Details */}
-            <Card className="rounded-xl bg-card">
+            <motion.div variants={fadeUp}>
+            <Card className="rounded-xl bg-card backdrop-blur-xl border border-white/10 shadow-lg">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
@@ -492,9 +553,11 @@ export default function ListingDetailPage() {
                 </div>
               </CardContent>
             </Card>
+            </motion.div>
 
             {/* Reviews Section */}
-            <Card className="rounded-xl bg-card">
+            <motion.div variants={fadeUp}>
+            <Card className="rounded-xl bg-card backdrop-blur-xl border border-white/10 shadow-lg">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center space-x-2">
@@ -515,6 +578,11 @@ export default function ListingDetailPage() {
                     <p className="text-muted-foreground mt-2">{totalReviews} reviews</p>
                   </div>
                   <div className="space-y-2">
+                    {loadingReviews && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Spinner size={18} /> Loading reviews...
+                      </div>
+                    )}
                     {[5, 4, 3, 2, 1].map((rating) => {
                       const count = reviewSummary?.ratingDistribution?.[rating] || 0
                       const percent = totalReviews ? (count / totalReviews) * 100 : 0
@@ -588,16 +656,25 @@ export default function ListingDetailPage() {
                   ))}
                 </div>
 
-                <div className="text-center">
-                  <Button variant="outline" className="border-orange-600 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/20 bg-transparent">
-                    Load More Reviews
-                  </Button>
-                </div>
+                {reviewsHasMore && (
+                  <div className="text-center">
+                    <Button
+                      variant="outline"
+                      className="border-orange-600 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/20 bg-transparent"
+                      onClick={loadMoreReviews}
+                      disabled={loadingMoreReviews}
+                    >
+                      {loadingMoreReviews ? <Spinner size={18} /> : "Load More Reviews"}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
+            </motion.div>
 
             {/* Location Map */}
-            <Card className="rounded-xl bg-card">
+            <motion.div variants={fadeUp}>
+            <Card className="rounded-xl bg-card backdrop-blur-xl border border-white/10 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <MapPin className="h-5 w-5" />
@@ -639,12 +716,14 @@ export default function ListingDetailPage() {
                 </div>
               </CardContent>
             </Card>
+            </motion.div>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Contact Card */}
-            <Card className="rounded-xl sticky top-24 bg-card">
+            <motion.div variants={fadeUp}>
+            <Card className="rounded-xl sticky top-24 bg-card backdrop-blur-xl border border-white/10 shadow-lg">
               <CardHeader>
                 <CardTitle>Contact Landlord</CardTitle>
               </CardHeader>
@@ -706,9 +785,11 @@ export default function ListingDetailPage() {
                 </div>
               </CardContent>
             </Card>
+            </motion.div>
 
             {/* Safety Tips */}
-            <Card className="rounded-xl bg-card">
+            <motion.div variants={fadeUp}>
+            <Card className="rounded-xl bg-card backdrop-blur-xl border border-white/10 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Shield className="h-5 w-5" />
@@ -725,9 +806,10 @@ export default function ListingDetailPage() {
                 </ul>
               </CardContent>
             </Card>
+            </motion.div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Contact Modal - sends via WhatsApp */}
       {showContactModal && (
