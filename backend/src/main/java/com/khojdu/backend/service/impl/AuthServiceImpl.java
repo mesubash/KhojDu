@@ -375,6 +375,13 @@ public class AuthServiceImpl implements AuthService {
         // Remove the used token
         redisTokenService.revoke(userId,token, TokenType.EMAIL_VERIFICATION);
 
+        // Send welcome email after verification
+        try {
+            emailService.sendWelcomeEmail(user.getEmail(), user.getFullName());
+        } catch (Exception ex) {
+            log.warn("Failed to send welcome email to {}: {}", user.getEmail(), ex.getMessage());
+        }
+
         log.info("Email verified successfully for: {}", user.getEmail());
     }
 

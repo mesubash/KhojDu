@@ -51,7 +51,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
                 if (redisTokenService.isTokenBlacklisted(jwt)) {
                     log.warn("Rejected blacklisted token: {}", jwt);
-                    throw new InvalidTokenException("Access token has been blacklisted");
+                    // Do not authenticate with blacklisted token
+                    SecurityContextHolder.clearContext();
+                    filterChain.doFilter(request, response);
+                    return;
                 }
                 UUID userId = UUID.fromString(jwtTokenProvider.getUserIdFromToken(jwt));
 

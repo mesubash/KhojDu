@@ -121,14 +121,17 @@ public class GlobalExceptionHandler {
             cause = cause.getCause();
         }
 
+        HttpStatus status = ex instanceof InvalidTokenException ? HttpStatus.UNAUTHORIZED : HttpStatus.UNAUTHORIZED;
+        String title = ex instanceof InvalidTokenException ? "Invalid Token" : "Unauthorized";
+
         ErrorResponse error = new ErrorResponse(
-                HttpStatus.UNAUTHORIZED.value(),
-                "Unauthorized",
+                status.value(),
+                title,
                 ex.getMessage(),
                 request.getDescription(false).replace("uri=", "")
         );
 
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        return ResponseEntity.status(status).body(error);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
