@@ -18,17 +18,24 @@ class AuthService {
   /**
    * Register a new user
    */
-  async register(
-    userData: RegisterRequest
-  ): Promise<ApiResponse<RegisterResponse>> {
+  async register(userData: RegisterRequest): Promise<ApiResponse> {
     try {
-      const response = await axiosInstance.post<ApiResponse<RegisterResponse>>(
-        "/auth/register",
-        userData
-      );
+      const response = await axiosInstance.post<ApiResponse>("/auth/register", userData);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
-      // ✅ Access token returned in response (stored in memory by AuthContext)
-      // ✅ Refresh token automatically stored in HTTP-only cookie by browser
+  /**
+   * Start reactivation (sends email link)
+   */
+  async initiateReactivation(credentials: LoginRequest): Promise<ApiResponse> {
+    try {
+      const response = await axiosInstance.post<ApiResponse>(
+        "/auth/reactivate/init",
+        credentials
+      );
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -123,9 +130,14 @@ class AuthService {
   ): Promise<ApiResponse> {
     try {
       const response = await axiosInstance.post<ApiResponse>(
-        `/auth/reset-password?token=${encodeURIComponent(
-          token
-        )}&newPassword=${encodeURIComponent(newPassword)}`
+        `/auth/reset-password`,
+        null,
+        {
+          params: {
+            token,
+            newPassword,
+          },
+        }
       );
       return response.data;
     } catch (error) {

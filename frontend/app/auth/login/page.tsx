@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getDashboardRouteForRole } from "@/lib/utils"
+import authService from "@/services/authService"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -26,6 +27,26 @@ export default function LoginPage() {
   const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email")
   const [step, setStep] = useState(1)
   const [verificationCode, setVerificationCode] = useState("")
+  const [inactiveMessage, setInactiveMessage] = useState<string | null>(null)
+  const [verifyMessage, setVerifyMessage] = useState<string | null>(null)
+  const [resending, setResending] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [resendDelay, setResendDelay] = useState(30)
+
+  // Cooldown timer for resend verification
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [resendCooldown])
 
   const [formData, setFormData] = useState({
     email: "",
@@ -71,6 +92,8 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setInactiveMessage(null)
+    setVerifyMessage(null)
 
     // Validate form
     if (!formData.email || !formData.password) {
@@ -106,8 +129,18 @@ export default function LoginPage() {
     } catch (err: any) {
       console.error("[Login Page] Login failed:", err)
       // Error is already set in context, but also show toast
+      const status = err?.status || error?.status
       const errorMessage = err?.message || error?.message || "Login failed. Please check your credentials."
-      toast.error(errorMessage)
+
+      if (status === 403 && (errorMessage?.toLowerCase()?.includes("inactive") || errorMessage?.toLowerCase()?.includes("reactivate"))) {
+        setInactiveMessage(errorMessage)
+        toast.error(errorMessage)
+      } else if (status === 403 && errorMessage?.toLowerCase()?.includes("verify")) {
+        setVerifyMessage(errorMessage)
+        toast.error(errorMessage)
+      } else {
+        toast.error(errorMessage)
+      }
     }
   }
 
@@ -136,6 +169,97 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-gradient mb-2">Welcome Back</h1>
           <p className="text-muted-foreground">Sign in to continue your journey</p>
         </div>
+
+        {inactiveMessage && (
+          <div className="mb-4 rounded-xl border border-orange-200/70 bg-orange-50/80 px-4 py-3 text-sm text-orange-900 shadow-sm backdrop-blur">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 mt-0.5 text-orange-500" />
+              <div className="space-y-1">
+                <p className="font-semibold">Account inactive</p>
+                <p>{inactiveMessage}</p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => router.push("/auth/reactivate")}
+                    className="rounded-full"
+                  >
+                    Reactivate now
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => router.push("/contact?topic=reactivation")}
+                    className="rounded-full"
+                  >
+                    Contact support
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="rounded-full"
+                    onClick={() => setInactiveMessage(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {verifyMessage && (
+          <div className="mb-4 rounded-xl border border-blue-200/70 bg-blue-50/80 px-4 py-3 text-sm text-blue-900 shadow-sm backdrop-blur">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 mt-0.5 text-blue-500" />
+              <div className="space-y-1">
+                <p className="font-semibold">Verify your email</p>
+                <p>{verifyMessage}</p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={resending || !formData.email || resendCooldown > 0}
+                    onClick={async () => {
+                      if (!formData.email) {
+                        toast.error("Enter your email to resend verification.")
+                        return
+                      }
+                      setResending(true)
+                      try {
+                        await authService.resendVerification(formData.email)
+                        toast.success("Verification email sent. Check your inbox.")
+                        setResendCooldown(resendDelay)
+                        setResendDelay((prev) => Math.min(prev * 2, 5 * 60))
+                      } catch (err: any) {
+                        toast.error(err?.message || "Could not resend verification.")
+                      } finally {
+                        setResending(false)
+                      }
+                    }}
+                    className="rounded-full"
+                  >
+                    {resending
+                      ? "Sending..."
+                      : resendCooldown > 0
+                        ? `Resend in ${resendCooldown}s`
+                        : "Resend verification"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="rounded-full"
+                    onClick={() => setVerifyMessage(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <Card className="glass-card hover-lift smooth-shadow border-0 relative z-20">
           <CardHeader className="text-center pb-4">

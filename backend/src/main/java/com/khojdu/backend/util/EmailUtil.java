@@ -12,11 +12,15 @@ public class EmailUtil {
     private String baseUrl;
 
     public String buildVerificationLink(String token) {
-        return baseUrl + "/verify-email?token=" + token;
+        return baseUrl + "/auth/verify-email?token=" + token;
     }
 
     public String buildPasswordResetLink(String token) {
         return baseUrl + "/reset-password?token=" + token;
+    }
+
+    public String buildReactivationLink(String token) {
+        return baseUrl + "/auth/reactivate/confirm?token=" + token;
     }
 
     public String buildPropertyLink(String propertyId) {
@@ -37,4 +41,3 @@ public class EmailUtil {
                 template.contains("}}");
     }
 }
-

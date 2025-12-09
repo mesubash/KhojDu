@@ -131,6 +131,38 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
+    public void sendReactivationEmail(String email, String fullName, String reactivationToken) {
+        log.info("Sending reactivation email to: {}", email);
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+
+            String sender = sanitizeSender(fromEmail);
+            helper.setFrom(sender);
+
+            String to = validateRecipient(email);
+            helper.setTo(to);
+
+            helper.setSubject("Reactivate Your KhojDu Account");
+
+            Context context = new Context();
+            context.setVariable("name", fullName);
+            context.setVariable("reactivationLink", emailUtil.buildReactivationLink(reactivationToken));
+
+            String htmlContent = templateEngine.process("email/reactivation", context);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            log.info("Reactivation email sent successfully to: {}", email);
+
+        } catch (MessagingException e) {
+            log.error("Failed to send reactivation email to: {}", email, e);
+            throw new RuntimeException("Failed to send reactivation email");
+        }
+    }
+
+    @Override
     public void sendWelcomeEmail(String email, String fullName) {
         log.info("Sending welcome email to: {}", email);
 

@@ -65,9 +65,7 @@ export interface RegisterRequest {
 }
 
 export interface RegisterResponse {
-  accessToken: string;
-  tokenType: string;
-  user: User;
+  message?: string;
 }
 
 export interface RefreshResponse {

@@ -18,6 +18,7 @@ public class RedisTokenServiceImpl implements RedisTokenService {
     private static final String REFRESH_KEY_PREFIX = "refresh:token:";
     private static final String PASSWORD_KEY_PREFIX = "reset:token:";
     private static final String EMAIL_VERIFICATION_KEY_PREFIX = "email:token:";
+    private static final String ACCOUNT_REACTIVATION_KEY_PREFIX = "reactivate:token:";
 
     private static final String BLACKLIST_KEY_PREFIX = "blacklist:token:";
 
@@ -34,6 +35,7 @@ public class RedisTokenServiceImpl implements RedisTokenService {
             case PASSWORD_RESET -> PASSWORD_KEY_PREFIX + userId;
             case REFRESH -> REFRESH_KEY_PREFIX + userId;
             case EMAIL_VERIFICATION -> EMAIL_VERIFICATION_KEY_PREFIX + userId;
+            case ACCOUNT_REACTIVATION -> ACCOUNT_REACTIVATION_KEY_PREFIX + userId;
             default -> throw new IllegalArgumentException("Unsupported token type: " + type);
         };
     }

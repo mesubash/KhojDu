@@ -80,8 +80,25 @@ axiosInstance.interceptors.response.use(
       _retry?: boolean;
     };
 
+    // ✅ DON'T try to refresh token for auth endpoints (login, register, etc.)
+    // These endpoints should fail normally without trying to refresh
+    const authEndpoints = [
+      "/auth/login",
+      "/auth/register",
+      "/auth/refresh",
+      "/auth/forgot-password",
+      "/auth/reset-password",
+    ];
+    const isAuthEndpoint = authEndpoints.some((endpoint) =>
+      originalRequest.url?.includes(endpoint)
+    );
+
+    // If this is an auth endpoint, surface the error directly without any session messaging
+    if (isAuthEndpoint) {
+      return Promise.reject(error);
+    }
+
     // If error is not 401 or request doesn't exist, reject immediately
-    // Not a 401 or missing request
     if (error.response?.status !== 401 || !originalRequest) {
       if (error.response?.status === 401 && typeof window !== "undefined") {
         const hadToken = !!localStorage.getItem("__kd_token")
@@ -102,19 +119,6 @@ axiosInstance.interceptors.response.use(
       redirectToLogin("Please log in to access this content.")
       return Promise.reject(error)
     }
-
-    // ✅ DON'T try to refresh token for auth endpoints (login, register, etc.)
-    // These endpoints should fail normally without trying to refresh
-    const authEndpoints = [
-      "/auth/login",
-      "/auth/register",
-      "/auth/refresh",
-      "/auth/forgot-password",
-      "/auth/reset-password",
-    ];
-    const isAuthEndpoint = authEndpoints.some((endpoint) =>
-      originalRequest.url?.includes(endpoint)
-    );
 
     if (isAuthEndpoint) {
       // For auth endpoints, just reject the error without refresh attempt

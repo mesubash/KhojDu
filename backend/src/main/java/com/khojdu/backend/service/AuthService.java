@@ -1,18 +1,17 @@
 package com.khojdu.backend.service;
 
 import com.khojdu.backend.dto.auth.*;
+import com.khojdu.backend.dto.common.SuccessResponse;
 
 public interface AuthService {
 
-    JwtResponse register(RegisterRequest request) throws Exception;
+    SuccessResponse register(RegisterRequest request) throws Exception;
 
     JwtResponse login(LoginRequest request);
-
+    void initiateReactivation(LoginRequest request);
+    JwtResponse confirmReactivation(String token);
     JwtResponse refreshToken(String refreshToken);
-
     void logout(String accessToken);
-
-    JwtResponse reactivateAccount(LoginRequest request);
 
     void forgotPassword(String email);
 

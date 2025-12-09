@@ -42,19 +42,12 @@ public class AuthController {
 
     @PostMapping("/register")
     @Operation(summary = "Register a new user", description = "Create a new user account")
-    public ResponseEntity<ApiResponse<JwtResponse>> register(
+    public ResponseEntity<ApiResponse<SuccessResponse>> register(
             @Valid @RequestBody RegisterRequest request,
             HttpServletResponse response) throws Exception {
-        JwtResponse jwtResponse = authService.register(request);
-
-        // Set refresh token as HTTP-only cookie
-        setRefreshTokenCookie(response, jwtResponse.getRefreshToken());
-
-        // Remove refresh token from response body (already in cookie)
-        JwtResponse responseBody = new JwtResponse(jwtResponse.getAccessToken(), jwtResponse.getUser());
-
+        SuccessResponse result = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("User registered successfully", responseBody));
+                .body(ApiResponse.success(result.getMessage(), result));
     }
 
     @PostMapping("/login")
@@ -109,16 +102,22 @@ public class AuthController {
                 SuccessResponse.of("User logged out successfully")));
     }
 
-    @PostMapping("/reactivate")
-    @Operation(summary = "Reactivate account", description = "Reactivate an inactive account by confirming credentials")
-    public ResponseEntity<ApiResponse<JwtResponse>> reactivate(
-            @Valid @RequestBody LoginRequest request,
-            HttpServletResponse response) {
-        JwtResponse jwtResponse = authService.reactivateAccount(request);
+    @PostMapping("/reactivate/init")
+    @Operation(summary = "Initiate reactivation", description = "Validate credentials and send a reactivation link if eligible (inactive < 90 days).")
+    public ResponseEntity<ApiResponse<SuccessResponse>> initiateReactivation(
+            @Valid @RequestBody LoginRequest request) {
+        authService.initiateReactivation(request);
+        return ResponseEntity.ok(ApiResponse.success("Reactivation link sent to your email.", SuccessResponse.of("Check your inbox for the reactivation link.")));
+    }
 
+    @PostMapping("/reactivate/confirm")
+    @Operation(summary = "Confirm reactivation", description = "Confirm reactivation token and issue new session tokens.")
+    public ResponseEntity<ApiResponse<JwtResponse>> confirmReactivation(
+            @RequestParam("token") String token,
+            HttpServletResponse response) {
+        JwtResponse jwtResponse = authService.confirmReactivation(token);
         setRefreshTokenCookie(response, jwtResponse.getRefreshToken());
         JwtResponse responseBody = new JwtResponse(jwtResponse.getAccessToken(), jwtResponse.getUser());
-
         return ResponseEntity.ok(ApiResponse.success("Account reactivated successfully", responseBody));
     }
 

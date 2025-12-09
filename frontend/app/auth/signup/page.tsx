@@ -83,7 +83,7 @@ export default function SignupPage() {
       // Map tenant/landlord to TENANT/LANDLORD role
       const userRole = role === "landlord" ? UserRole.LANDLORD : UserRole.TENANT
 
-      const registeredUser = await register({
+      const response = await register({
         fullName: formData.fullName,
         email: formData.email,
         password: formData.password,
@@ -93,12 +93,15 @@ export default function SignupPage() {
         occupation: formData.occupation || undefined,
       })
 
-      // ✅ Registration successful
-      toast.success("Account created successfully!")
-
-      // Redirect to dashboard
-      const target = getDashboardRouteForRole(registeredUser?.role)
-      router.push(target)
+      // ✅ Registration successful (no auto-login)
+      const msg =
+        (response as any)?.message ||
+        "Account created successfully! Please verify your email from the link we just sent."
+      toast.success(msg)
+      if (typeof window !== "undefined") {
+        localStorage.setItem("__kd_login_notice", "Please verify your email before logging in.")
+      }
+      router.push("/auth/login")
     } catch (err: any) {
       // Error is already set in context, but also show toast
       const errorMessage = err?.message || error?.message || "Registration failed. Please try again."

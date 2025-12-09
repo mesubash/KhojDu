@@ -20,7 +20,7 @@ import type {
 
 interface AuthContextType extends AuthState {
   login: (credentials: LoginRequest) => Promise<User>
-  register: (userData: RegisterRequest) => Promise<User>
+  register: (userData: RegisterRequest) => Promise<ApiResponse>
   logout: () => Promise<void>
   refreshAuth: () => Promise<void>
   clearError: () => void
@@ -190,42 +190,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Register handler
   const register = useCallback(
-    async (userData: RegisterRequest) => {
+    async (userData: RegisterRequest): Promise<ApiResponse> => {
       setState((prev) => ({ ...prev, isLoading: true, error: null }))
 
       try {
         console.log('[Register] Starting registration...')
-        const response: ApiResponse<RegisterResponse> = await authService.register(userData)
+        const response: ApiResponse = await authService.register(userData)
 
         console.log('[Register] Full response:', response)
-        console.log('[Register] Response data:', response.data)
 
-        // ✅ Check if we got the user data
-        if (!response.data?.user) {
-          console.error('[Register] Missing user data in response:', response)
-          throw new Error("Invalid response from server - missing user data")
-        }
-
-        const { user, accessToken } = response.data
-        console.log('[Register] Registration successful, user:', user.email)
-
-        // ✅ Store in localStorage (persists across tabs)
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('__kd_user', JSON.stringify(user))
-          localStorage.setItem('__kd_token', accessToken)
-          console.log('[Register] Stored in localStorage')
-        }
-
-        // ✅ Update React state
-        setState({
-          user,
-          isAuthenticated: true,
+        // Keep user logged out after signup; await email verification
+        setState((prev) => ({
+          ...prev,
+          user: null,
+          isAuthenticated: false,
           isLoading: false,
           error: null,
-        })
+        }))
 
-        console.log('[AuthContext] ✅ Registration successful')
-        return user
+        console.log('[AuthContext] ✅ Registration submitted, awaiting verification email')
+        return response
       } catch (error: any) {
         console.error('[Register] Error occurred:', {
           message: error.message,
