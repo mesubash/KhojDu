@@ -2,28 +2,20 @@
 
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Target, Award, Heart, Shield, Zap } from "lucide-react"
+import { motion } from "framer-motion"
 
 const team = [
   {
-    name: "Rajesh Kumar",
-    role: "CEO & Founder",
+    name: "Subash Singh Dhami",
+    role: "Founder & Product Lead",
     image: "/placeholder.svg?height=200&width=200",
-    bio: "Tech executive with 10+ years in real estate technology. Passionate about solving housing challenges in Nepal.",
-  },
-  {
-    name: "Priya Sharma",
-    role: "CTO",
-    image: "/placeholder.svg?height=200&width=200",
-    bio: "Full-stack developer and tech enthusiast. Leading our engineering team to build world-class rental solutions.",
-  },
-  {
-    name: "Amit Thapa",
-    role: "Head of Operations",
-    image: "/placeholder.svg?height=200&width=200",
-    bio: "Real estate veteran with deep knowledge of Kathmandu property market. Ensures platform quality and trust.",
+    bio: "Builder, product thinker, and relentless problem solver crafting delightful rental experiences in Nepal.",
+    github: "https://github.com/mesubash",
+    linkedin: "https://www.linkedin.com/in/subashsdhami",
+    website: "https://subashsdhami.com.np",
   },
 ]
 
@@ -46,6 +38,12 @@ const values = [
 ]
 
 export default function AboutPage() {
+  const listContainer = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } } }
+  const fadeItem = {
+    hidden: { opacity: 0, y: 16 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] as any } },
+  }
+
   return (
     <div className="page-shell">
       <Header />
@@ -81,29 +79,39 @@ export default function AboutPage() {
       {/* Mission & Vision */}
       <section className="py-16 px-4 bg-background">
         <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12">
-            <Card className="p-8 rounded-xl shadow-sm border-border">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 dark:bg-orange-900/20 rounded-full mb-6">
-                <Target className="h-8 w-8 text-orange-500" />
-              </div>
-              <h2 className="text-2xl font-bold text-foreground mb-4">Our Mission</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                To revolutionize the room rental experience in Nepal by creating a transparent, secure, and efficient platform
-                that connects tenants with quality accommodations and helps landlords find reliable tenants.
-              </p>
-            </Card>
+          <motion.div
+            className="grid md:grid-cols-2 gap-12"
+            variants={listContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.2 }}
+          >
+            <motion.div variants={fadeItem} whileHover={{ y: -6, scale: 1.01, boxShadow: "0 16px 36px rgba(0,0,0,0.12)" }}>
+              <Card className="p-8 rounded-xl shadow-sm border-border cursor-pointer">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 dark:bg-orange-900/20 rounded-full mb-6">
+                  <Target className="h-8 w-8 text-orange-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-foreground mb-4">Our Mission</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  To revolutionize the room rental experience in Nepal by creating a transparent, secure, and efficient platform
+                  that connects tenants with quality accommodations and helps landlords find reliable tenants.
+                </p>
+              </Card>
+            </motion.div>
 
-            <Card className="p-8 rounded-xl shadow-sm border-border">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-100 dark:bg-teal-900/20 rounded-full mb-6">
-                <Award className="h-8 w-8 text-teal-500" />
-              </div>
-              <h2 className="text-2xl font-bold text-foreground mb-4">Our Vision</h2>
-              <p className="text-muted-foreground leading-relaxed">
-                To become Nepal's most trusted and comprehensive room rental platform, expanding from Kathmandu to serve
-                the entire country and setting new standards for rental experiences.
-              </p>
-            </Card>
-          </div>
+            <motion.div variants={fadeItem} whileHover={{ y: -6, scale: 1.01, boxShadow: "0 16px 36px rgba(0,0,0,0.12)" }}>
+              <Card className="p-8 rounded-xl shadow-sm border-border cursor-pointer">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-100 dark:bg-teal-900/20 rounded-full mb-6">
+                  <Award className="h-8 w-8 text-teal-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-foreground mb-4">Our Vision</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  To become Nepal's most trusted and comprehensive room rental platform, expanding from Kathmandu to serve
+                  the entire country and setting new standards for rental experiences.
+                </p>
+              </Card>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
@@ -115,20 +123,33 @@ export default function AboutPage() {
             <p className="text-xl text-muted-foreground">Principles that guide everything we do</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <motion.div
+            className="grid md:grid-cols-3 gap-8"
+            variants={listContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.2 }}
+          >
             {values.map((value, index) => {
               const Icon = value.icon
               return (
-                <Card key={index} className="p-6 text-center rounded-xl shadow-sm border-border">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 dark:bg-orange-900/20 rounded-full mb-6">
-                    <Icon className="h-8 w-8 text-orange-500" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground mb-4">{value.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">{value.description}</p>
-                </Card>
+                <motion.div
+                  key={index}
+                  variants={fadeItem}
+                  whileHover={{ y: -6, scale: 1.02, boxShadow: "0 16px 36px rgba(0,0,0,0.12)" }}
+                  className="cursor-pointer"
+                >
+                  <Card className="p-6 text-center rounded-xl shadow-sm border-border">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-100 dark:bg-orange-900/20 rounded-full mb-6">
+                      <Icon className="h-8 w-8 text-orange-500" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground mb-4">{value.title}</h3>
+                    <p className="text-muted-foreground leading-relaxed">{value.description}</p>
+                  </Card>
+                </motion.div>
               )
             })}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -140,20 +161,53 @@ export default function AboutPage() {
             <p className="text-xl text-muted-foreground">The passionate people behind KhojDu</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <motion.div
+            className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
+            variants={listContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.2 }}
+          >
             {team.map((member, index) => (
-              <Card key={index} className="p-6 text-center rounded-xl shadow-sm border-border">
-                <img
-                  src={member.image || "/placeholder.svg"}
-                  alt={member.name}
-                  className="w-32 h-32 rounded-full mx-auto mb-6 object-cover"
-                />
-                <h3 className="text-xl font-semibold text-foreground mb-2">{member.name}</h3>
-                <p className="text-orange-500 font-medium mb-4">{member.role}</p>
-                <p className="text-muted-foreground leading-relaxed">{member.bio}</p>
-              </Card>
+              <motion.div
+                key={index}
+                variants={fadeItem}
+                whileHover={{ y: -6, scale: 1.02, boxShadow: "0 16px 36px rgba(0,0,0,0.12)" }}
+                className="cursor-pointer"
+              >
+                <Card className="p-6 rounded-xl shadow-sm border-border bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl">
+                  <CardContent className="p-0 space-y-4">
+                    <div className="relative w-32 h-32 mx-auto">
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-orange-500 to-teal-500 blur-2xl opacity-50" />
+                      <img
+                        src={member.image || "/placeholder.svg"}
+                        alt={member.name}
+                        className="w-32 h-32 rounded-full mx-auto object-cover relative z-10"
+                      />
+                    </div>
+                    <div className="text-center space-y-2">
+                      <h3 className="text-xl font-semibold text-foreground">{member.name}</h3>
+                      <p className="text-orange-500 font-medium">{member.role}</p>
+                      <p className="text-muted-foreground leading-relaxed text-sm">{member.bio}</p>
+                    </div>
+                    <div className="flex items-center justify-center gap-3 text-sm">
+                      <a href={member.github} target="_blank" rel="noreferrer" className="text-teal-600 hover:text-teal-700 underline underline-offset-4">
+                        GitHub
+                      </a>
+                      <span className="text-muted-foreground">•</span>
+                      <a href={member.linkedin} target="_blank" rel="noreferrer" className="text-teal-600 hover:text-teal-700 underline underline-offset-4">
+                        LinkedIn
+                      </a>
+                      <span className="text-muted-foreground">•</span>
+                      <a href={member.website} target="_blank" rel="noreferrer" className="text-teal-600 hover:text-teal-700 underline underline-offset-4">
+                        Website
+                      </a>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
