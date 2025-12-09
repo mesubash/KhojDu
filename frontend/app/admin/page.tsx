@@ -11,7 +11,14 @@ import { Header } from "@/components/header"
 import { useAuth } from "@/context/AuthContext"
 import { UserRole } from "@/types/auth"
 import { getDashboardRouteForRole } from "@/lib/utils"
-import { fetchAdminDashboard } from "@/services/dashboardService"
+import {
+  fetchAdminDashboard,
+  fetchAdminProperties,
+  fetchAdminUsers,
+  fetchPendingVerifications,
+  AdminUser,
+} from "@/services/dashboardService"
+import type { PropertyListItem } from "@/types/property"
 import {
   Search,
   Users,
@@ -28,82 +35,6 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 
-const mockStats = [
-  { title: "Total Users", value: "15,247", change: "+12%", icon: Users, color: "text-orange-600" },
-  { title: "Active Listings", value: "3,456", change: "+8%", icon: Building, color: "text-green-600" },
-  { title: "Messages Today", value: "892", change: "+23%", icon: MessageSquare, color: "text-purple-600" },
-  { title: "Revenue", value: "Rs 2,45,000", change: "+15%", icon: TrendingUp, color: "text-teal-600" },
-]
-
-const mockUsers = [
-  {
-    id: 1,
-    name: "Ram Sharma",
-    email: "ram@example.com",
-    role: "Landlord",
-    status: "Active",
-    joined: "2024-01-15",
-    listings: 5,
-  },
-  {
-    id: 2,
-    name: "Sita Poudel",
-    email: "sita@example.com",
-    role: "Tenant",
-    status: "Active",
-    joined: "2024-02-20",
-    listings: 0,
-  },
-  {
-    id: 3,
-    name: "Krishna Thapa",
-    email: "krishna@example.com",
-    role: "Landlord",
-    status: "Pending",
-    joined: "2024-03-10",
-    listings: 2,
-  },
-  {
-    id: 4,
-    name: "Maya Gurung",
-    email: "maya@example.com",
-    role: "Tenant",
-    status: "Inactive",
-    joined: "2024-01-05",
-    listings: 0,
-  },
-]
-
-const mockListings = [
-  {
-    id: 1,
-    title: "Cozy Room in Thamel",
-    landlord: "Ram Sharma",
-    status: "Active",
-    rent: 15000,
-    views: 245,
-    created: "2024-03-01",
-  },
-  {
-    id: 2,
-    title: "Spacious Flat in Baneshwor",
-    landlord: "Krishna Thapa",
-    status: "Pending",
-    rent: 25000,
-    views: 89,
-    created: "2024-03-05",
-  },
-  {
-    id: 3,
-    title: "Modern House in Lalitpur",
-    landlord: "Ram Sharma",
-    status: "Active",
-    rent: 45000,
-    views: 156,
-    created: "2024-02-28",
-  },
-]
-
 export default function AdminDashboard() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading } = useAuth()
@@ -113,6 +44,11 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<Record<string, any> | null>(null)
   const [isFetching, setIsFetching] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [usersData, setUsersData] = useState<AdminUser[]>([])
+  const [propertiesData, setPropertiesData] = useState<PropertyListItem[]>([])
+  const [verifications, setVerifications] = useState<any[]>([])
+  const [listLoading, setListLoading] = useState(false)
+  const [listError, setListError] = useState<string | null>(null)
 
   useEffect(() => {
     if (isLoading) return
@@ -142,21 +78,39 @@ export default function AdminDashboard() {
       .finally(() => setIsFetching(false))
   }, [isAuthenticated])
 
-  const filteredUsers = mockUsers.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = filterStatus === "all" || user.status.toLowerCase() === filterStatus
-    return matchesSearch && matchesStatus
-  })
-
-  const filteredListings = mockListings.filter((listing) => {
-    const matchesSearch =
-      listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      listing.landlord.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = filterStatus === "all" || listing.status.toLowerCase() === filterStatus
-    return matchesSearch && matchesStatus
-  })
+  useEffect(() => {
+    if (!isAuthenticated) return
+    const load = async () => {
+      try {
+        setListLoading(true)
+        setListError(null)
+        if (activeTab === "users") {
+          const params: any = { page: 0, size: 10, search: searchQuery || undefined }
+          if (filterStatus === "active") params.active = true
+          if (filterStatus === "inactive") params.active = false
+          if (filterStatus === "pending") params.verified = false
+          const response = await fetchAdminUsers(params)
+          setUsersData(response?.content || [])
+        } else if (activeTab === "listings") {
+          const params: any = { page: 0, size: 10, search: searchQuery || undefined }
+          if (filterStatus === "active") params.status = "APPROVED"
+          if (filterStatus === "pending") params.status = "PENDING"
+          if (filterStatus === "inactive") params.status = "REJECTED"
+          const response = await fetchAdminProperties(params)
+          setPropertiesData(response?.content || [])
+        } else if (activeTab === "reports") {
+          const response = await fetchPendingVerifications(0, 10)
+          setVerifications(response?.content || [])
+        }
+      } catch (err) {
+        console.error("[AdminDashboard] Failed to load list data", err)
+        setListError("Could not load data for this tab.")
+      } finally {
+        setListLoading(false)
+      }
+    }
+    load()
+  }, [activeTab, filterStatus, searchQuery, isAuthenticated])
 
   if (isLoading) {
     return (
@@ -172,6 +126,13 @@ export default function AdminDashboard() {
   if (!isAuthenticated || !user || user.role !== UserRole.ADMIN) {
     return null
   }
+
+  const statCards = [
+    { title: "Total Users", value: stats?.totalUsers ?? "--", icon: Users, color: "text-orange-600" },
+    { title: "Active Listings", value: stats?.totalProperties ?? "--", icon: Building, color: "text-green-600" },
+    { title: "Featured", value: stats?.featuredProperties ?? "--", icon: TrendingUp, color: "text-teal-600" },
+    { title: "Complaints", value: stats?.pendingComplaints ?? "--", icon: AlertTriangle, color: "text-red-600" },
+  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
@@ -215,26 +176,23 @@ export default function AdminDashboard() {
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {mockStats.map((stat, index) => {
+                  {statCards.map((stat, index) => {
                     const Icon = stat.icon
-                    const dynamicValue =
-                      stats && (stats[stat.title] || stats[stat.title.toLowerCase()] || stats[stat.title.replace(/\s/g, "")])
                     return (
                       <Card key={index} className="rounded-xl shadow-sm">
                         <CardContent className="p-6">
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm text-muted-foreground">{stat.title}</p>
-                              <p className="text-2xl font-bold text-foreground">{dynamicValue || stat.value}</p>
-                              <p className="text-sm text-green-600 dark:text-green-400">{stat.change} from last month</p>
+                              <p className="text-2xl font-bold text-foreground">{stat.value}</p>
                             </div>
                             <Icon className={`h-8 w-8 ${stat.color}`} />
                           </div>
                         </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
+                      </Card>
+                    )
+                  })}
+                </div>
 
             {/* Recent Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -244,28 +202,24 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockUsers.slice(0, 5).map((user) => (
+                    {listLoading && <p className="text-sm text-muted-foreground">Loading users...</p>}
+                    {!listLoading && usersData.slice(0, 5).map((user) => (
                       <div key={user.id} className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{user.name}</p>
+                          <p className="font-medium">{user.fullName}</p>
                           <p className="text-sm text-muted-foreground">{user.email}</p>
                         </div>
                         <Badge
-                          variant={
-                            user.status === "Active" ? "default" : user.status === "Pending" ? "secondary" : "outline"
-                          }
-                          className={`text-xs ${
-                            user.status === "Active"
-                              ? "bg-green-100 text-green-800"
-                              : user.status === "Pending"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-red-100 text-red-800"
-                          }`}
+                          variant={user.isActive ? "default" : "secondary"}
+                          className={`text-xs ${user.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
                         >
-                          {user.status}
+                          {user.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </div>
                     ))}
+                    {!listLoading && usersData.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No users found.</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -276,27 +230,31 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockListings.slice(0, 5).map((listing) => (
+                    {listLoading && <p className="text-sm text-muted-foreground">Loading listings...</p>}
+                    {!listLoading && propertiesData.slice(0, 5).map((listing) => (
                       <div key={listing.id} className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">{listing.title}</p>
-                          <p className="text-sm text-muted-foreground">by {listing.landlord}</p>
+                          <p className="text-sm text-muted-foreground">by {listing.landlordName || "Unknown"}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-medium">Rs {listing.rent.toLocaleString()}</p>
+                          <p className="font-medium">Rs {(Number(listing.monthlyRent) || 0).toLocaleString()}</p>
                           <Badge
-                            variant={listing.status === "Active" ? "default" : "secondary"}
+                            variant={listing.status === "APPROVED" ? "default" : "secondary"}
                             className={`text-xs ${
-                              listing.status === "Active"
+                              listing.status === "APPROVED"
                                 ? "bg-green-100 text-green-800"
                                 : "bg-yellow-100 text-yellow-800"
                             }`}
                           >
-                            {listing.status}
+                            {listing.status || "UNKNOWN"}
                           </Badge>
                         </div>
                       </div>
                     ))}
+                    {!listLoading && propertiesData.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No listings found.</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -337,9 +295,10 @@ export default function AdminDashboard() {
 
             {/* Users Table */}
             <Card className="rounded-xl shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-xl">Users ({filteredUsers.length})</CardTitle>
-              </CardHeader>
+            <CardHeader>
+              <CardTitle className="text-xl">Users ({usersData.length})</CardTitle>
+              {listError && <p className="text-sm text-red-600">{listError}</p>}
+            </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -356,30 +315,18 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredUsers.map((user) => (
+                      {usersData.map((user) => (
                         <tr key={user.id} className="border-b hover:bg-muted/50 dark:hover:bg-muted/20">
                           <td className="p-4">
                             <div>
-                              <p className="font-medium">{user.name}</p>
+                              <p className="font-medium">{user.fullName}</p>
                               <p className="text-sm text-muted-foreground">{user.email}</p>
                               <div className="sm:hidden mt-1">
                                 <Badge
-                                  variant={
-                                    user.status === "Active"
-                                      ? "default"
-                                      : user.status === "Pending"
-                                        ? "secondary"
-                                        : "outline"
-                                  }
-                                  className={`text-xs ${
-                                    user.status === "Active"
-                                      ? "bg-green-100 text-green-800"
-                                      : user.status === "Pending"
-                                        ? "bg-yellow-100 text-yellow-800"
-                                        : "bg-red-100 text-red-800"
-                                  }`}
+                                  variant={user.isActive ? "default" : "secondary"}
+                                  className={`text-xs ${user.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
                                 >
-                                  {user.status}
+                                  {user.isActive ? "Active" : "Inactive"}
                                 </Badge>
                               </div>
                             </div>
@@ -391,26 +338,18 @@ export default function AdminDashboard() {
                           </td>
                           <td className="p-4 hidden md:table-cell">
                             <Badge
-                              variant={
-                                user.status === "Active"
-                                  ? "default"
-                                  : user.status === "Pending"
-                                    ? "secondary"
-                                    : "outline"
-                              }
-                              className={`text-xs ${
-                                user.status === "Active"
-                                  ? "bg-green-100 text-green-800"
-                                  : user.status === "Pending"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-red-100 text-red-800"
-                              }`}
+                              variant={user.isActive ? "default" : "secondary"}
+                              className={`text-xs ${user.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
                             >
-                              {user.status}
+                              {user.isActive ? "Active" : "Inactive"}
                             </Badge>
                           </td>
-                          <td className="p-4 text-sm text-muted-foreground hidden lg:table-cell">{user.joined}</td>
-                          <td className="p-4 text-sm text-muted-foreground hidden lg:table-cell">{user.listings}</td>
+                          <td className="p-4 text-sm text-muted-foreground hidden lg:table-cell">
+                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}
+                          </td>
+                          <td className="p-4 text-sm text-muted-foreground hidden lg:table-cell">
+                            {user.isVerified ? "Verified" : "Unverified"}
+                          </td>
                           <td className="p-4">
                             <div className="flex items-center space-x-2">
                               <Button variant="ghost" size="sm">
@@ -426,6 +365,13 @@ export default function AdminDashboard() {
                           </td>
                         </tr>
                       ))}
+                      {!listLoading && usersData.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="p-4 text-sm text-muted-foreground">
+                            No users found for the current filter.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -467,9 +413,10 @@ export default function AdminDashboard() {
 
             {/* Listings Table */}
             <Card className="rounded-xl shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-xl">Listings ({filteredListings.length})</CardTitle>
-              </CardHeader>
+            <CardHeader>
+              <CardTitle className="text-xl">Listings ({propertiesData.length})</CardTitle>
+              {listError && <p className="text-sm text-red-600">{listError}</p>}
+            </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -489,28 +436,34 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredListings.map((listing) => (
+                      {propertiesData.map((listing) => (
                         <tr key={listing.id} className="border-b hover:bg-muted/50 dark:hover:bg-muted/20">
                           <td className="p-4">
                             <p className="font-medium">{listing.title}</p>
-                            <p className="text-sm text-muted-foreground sm:hidden">by {listing.landlord}</p>
+                            <p className="text-sm text-muted-foreground sm:hidden">by {listing.landlordName || "Unknown"}</p>
                           </td>
-                          <td className="p-4 text-sm text-muted-foreground hidden sm:table-cell">{listing.landlord}</td>
+                          <td className="p-4 text-sm text-muted-foreground hidden sm:table-cell">
+                            {listing.landlordName || "—"}
+                          </td>
                           <td className="p-4 text-sm font-medium hidden md:table-cell">
-                            Rs {listing.rent.toLocaleString()}
+                            Rs {(Number(listing.monthlyRent) || 0).toLocaleString()}
                           </td>
-                          <td className="p-4 text-sm text-muted-foreground hidden lg:table-cell">{listing.views}</td>
-                          <td className="p-4 text-sm text-muted-foreground hidden lg:table-cell">{listing.created}</td>
+                          <td className="p-4 text-sm text-muted-foreground hidden lg:table-cell">
+                            {listing.viewCount ?? "—"}
+                          </td>
+                          <td className="p-4 text-sm text-muted-foreground hidden lg:table-cell">
+                            {listing.createdAt ? new Date(listing.createdAt).toLocaleDateString() : "—"}
+                          </td>
                           <td className="p-4">
                             <Badge
-                              variant={listing.status === "Active" ? "default" : "secondary"}
+                              variant={listing.status === "APPROVED" ? "default" : "secondary"}
                               className={`text-xs ${
-                                listing.status === "Active"
+                                listing.status === "APPROVED"
                                   ? "bg-green-100 text-green-800"
                                   : "bg-yellow-100 text-yellow-800"
                               }`}
                             >
-                              {listing.status}
+                              {listing.status || "UNKNOWN"}
                             </Badge>
                           </td>
                           <td className="p-4">
@@ -528,6 +481,13 @@ export default function AdminDashboard() {
                           </td>
                         </tr>
                       ))}
+                      {!listLoading && propertiesData.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="p-4 text-sm text-muted-foreground">
+                            No listings found for the current filter.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -543,14 +503,33 @@ export default function AdminDashboard() {
               <CardHeader>
                 <CardTitle className="text-xl flex items-center space-x-2">
                   <AlertTriangle className="h-5 w-5 text-orange-600" />
-                  <span>System Reports</span>
+                  <span>Pending Verifications</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12">
-                  <AlertTriangle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Reports Coming Soon</h3>
-                  <p className="text-muted-foreground">Advanced reporting features will be available in the next update.</p>
+                {listLoading && <p className="text-sm text-muted-foreground">Loading verifications...</p>}
+                {!listLoading && verifications.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No pending verifications right now.</p>
+                )}
+                <div className="space-y-3">
+                  {verifications.map((item: any) => (
+                    <div key={item.id} className="flex items-center justify-between border border-border rounded-lg p-4">
+                      <div>
+                        <p className="font-medium text-foreground">{item.user?.fullName || "Unknown user"}</p>
+                        <p className="text-sm text-muted-foreground">{item.user?.email}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Submitted: {item.submittedAt || "—"}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">PENDING</Badge>
+                        <Button size="sm" variant="ghost" className="text-green-600 hover:text-green-700">
+                          <CheckCircle className="h-4 w-4 mr-1" /> Approve
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700">
+                          <XCircle className="h-4 w-4 mr-1" /> Reject
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>

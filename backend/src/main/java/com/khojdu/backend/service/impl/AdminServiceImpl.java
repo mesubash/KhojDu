@@ -13,6 +13,10 @@ import com.khojdu.backend.repository.*;
 import com.khojdu.backend.service.AdminService;
 import com.khojdu.backend.service.EmailService;
 import com.khojdu.backend.util.PaginationUtil;
+import com.khojdu.backend.mapper.PropertyMapper;
+import com.khojdu.backend.mapper.UserMapper;
+import com.khojdu.backend.dto.property.PropertyListResponse;
+import com.khojdu.backend.dto.user.UserResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -37,6 +41,8 @@ public class AdminServiceImpl implements AdminService {
     private final InquiryRepository inquiryRepository;
     private final LandlordVerificationRepository landlordVerificationRepository;
     private final EmailService emailService;
+    private final PropertyMapper propertyMapper;
+    private final UserMapper userMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -194,5 +200,37 @@ public class AdminServiceImpl implements AdminService {
         landlordVerificationRepository.save(verification);
 
         log.info("Verification rejected successfully: {}", verificationId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponse<?> getUsers(int page, int size, String search, UserRole role, Boolean verified, Boolean active) {
+        Pageable pageable = PaginationUtil.createPageable(page, size, "createdAt", "DESC");
+        Page<User> userPage = userRepository.searchAdminUsers(
+                (search == null || search.isBlank()) ? null : search.trim(),
+                role,
+                verified,
+                active,
+                pageable);
+
+        return PaginationUtil.createPagedResponse(userPage, userPage.getContent()
+                .stream()
+                .map(userMapper::toUserResponse)
+                .toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponse<?> getProperties(int page, int size, String search, PropertyStatus status) {
+        Pageable pageable = PaginationUtil.createPageable(page, size, "createdAt", "DESC");
+        Page<Property> propertyPage = propertyRepository.searchAdminProperties(
+                status,
+                (search == null || search.isBlank()) ? null : search.trim(),
+                pageable);
+
+        return PaginationUtil.createPagedResponse(propertyPage, propertyPage.getContent()
+                .stream()
+                .map(propertyMapper::toPropertyListResponse)
+                .toList());
     }
 }

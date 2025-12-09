@@ -7,6 +7,7 @@ export interface PropertyListItem {
   title: string
   propertyType?: PropertyType
   status?: string
+  location?: string
   address?: string
   city?: string
   district?: string
@@ -27,6 +28,8 @@ export interface PropertyListItem {
   reviewCount?: number
   keyAmenities?: string[]
   distanceKm?: number
+  latitude?: number
+  longitude?: number
 }
 
 export interface PropertySearchRequest {

@@ -13,6 +13,7 @@ import { useEffect, useState } from "react"
 import { searchProperties, fetchFeaturedProperties } from "@/services/propertyService"
 import type { PropertyListItem } from "@/types/property"
 import { toast } from "sonner"
+import { motion } from "framer-motion"
 
 export default function HomePage() {
   const [featuredProperties, setFeaturedProperties] = useState<PropertyListItem[]>([])
@@ -74,7 +75,12 @@ export default function HomePage() {
             </p>
 
             {/* Search Bar */}
-            <Card className="p-6 max-w-2xl mx-auto mb-8 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+            <motion.div
+              whileHover={{ y: -8, scale: 1.01, boxShadow: "0 18px 40px rgba(0,0,0,0.14)" }}
+              transition={{ type: "spring", stiffness: 220, damping: 18 }}
+              className="max-w-2xl mx-auto mb-8"
+            >
+            <Card className="p-6 transition-all duration-300">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
                   <Input
@@ -88,6 +94,7 @@ export default function HomePage() {
                 </Button>
               </div>
             </Card>
+            </motion.div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/search">
@@ -133,7 +140,13 @@ export default function HomePage() {
                 ? `${property.totalArea} sq ft`
                 : property.keyAmenities?.find((k) => k.toLowerCase().includes("sq")) || "—"
               return (
-                <Card key={property.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <motion.div
+                  key={property.id}
+                  whileHover={{ y: -6, scale: 1.02, boxShadow: "0 18px 40px rgba(0,0,0,0.14)" }}
+                  transition={{ type: "spring", stiffness: 220, damping: 18 }}
+                  className="h-full"
+                >
+                <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col">
                   <div className="relative">
                     <Image
                       src={property.primaryImageUrl || "/placeholder.svg"}
@@ -207,6 +220,7 @@ export default function HomePage() {
                     </div>
                   </CardContent>
                 </Card>
+                </motion.div>
               )
             })}
           </div>
@@ -257,7 +271,7 @@ export default function HomePage() {
                 Join thousands of satisfied tenants who found their perfect rental through <span className="text-orange-500" style={{ fontFamily: 'var(--font-nothing-you-could-do)' }}>KhojDu</span>
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/explore">
+                <Link href="/search">
                   <Button
                     size="lg"
                     className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white"

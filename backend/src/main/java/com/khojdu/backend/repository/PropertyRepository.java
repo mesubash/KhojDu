@@ -104,4 +104,15 @@ public interface PropertyRepository extends JpaRepository<Property, UUID> {
 
     @Query("SELECT p FROM Property p WHERE p.status = 'APPROVED' AND p.isAvailable = true ORDER BY p.createdAt DESC")
     Page<Property> findRecentProperties(Pageable pageable);
+
+    @Query("""
+        SELECT p FROM Property p
+        WHERE (:status IS NULL OR p.status = :status)
+          AND (:search IS NULL OR LOWER(CAST(p.title AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+            OR LOWER(CAST(p.city AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+            OR LOWER(CAST(p.district AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
+        """)
+    Page<Property> searchAdminProperties(@Param("status") PropertyStatus status,
+                                         @Param("search") String search,
+                                         Pageable pageable);
 }

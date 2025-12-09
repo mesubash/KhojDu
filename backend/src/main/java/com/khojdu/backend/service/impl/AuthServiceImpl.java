@@ -121,6 +121,10 @@ public class AuthServiceImpl implements AuthService {
             User user = userRepository.findById(userPrincipal.getId())
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+            if (Boolean.FALSE.equals(user.getIsActive())) {
+                throw new UnauthorizedException("Account is inactive. Please reactivate your account.");
+            }
+
             String accessToken = jwtTokenProvider.generateToken(authentication);
             String refreshToken = jwtTokenProvider.generateRefreshToken(authentication);
 
@@ -158,6 +162,10 @@ public class AuthServiceImpl implements AuthService {
             User user = userRepository.findById(uid)
                     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+            if (Boolean.FALSE.equals(user.getIsActive())) {
+                throw new UnauthorizedException("Account is inactive. Please reactivate your account.");
+            }
+
             Authentication authentication = new UsernamePasswordAuthenticationToken(
                     new UserPrincipal(user), null, new UserPrincipal(user).getAuthorities()
             );
@@ -194,6 +202,36 @@ public class AuthServiceImpl implements AuthService {
             log.warn("Refresh token invalid or rotation failed", e);
             throw new UnauthorizedException("Invalid refresh token", e);
         }
+    }
+
+    @Override
+    @Transactional
+    public JwtResponse reactivateAccount(LoginRequest request) {
+        // Authenticate credentials first (will fail if disabled/locked)
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+        );
+
+        UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+        User user = userRepository.findById(userPrincipal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        // Activate account if currently inactive
+        if (Boolean.FALSE.equals(user.getIsActive())) {
+            user.setIsActive(true);
+            userRepository.save(user);
+        }
+
+        String accessToken = jwtTokenProvider.generateToken(authentication);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(authentication);
+        redisTokenService.store(user.getId().toString(), refreshToken, TokenType.REFRESH);
+
+        JwtResponse.UserInfo userInfo = new JwtResponse.UserInfo(
+                user.getId(), user.getEmail(), user.getFullName(), user.getRole(), user.getIsVerified()
+        );
+
+        log.info("User reactivated and logged in: {}", user.getEmail());
+        return new JwtResponse(accessToken, refreshToken, userInfo);
     }
 
     @Override

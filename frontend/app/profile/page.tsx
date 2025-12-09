@@ -16,6 +16,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { fetchProfile, updateProfile } from "@/services/userService"
 import type { User } from "@/types/auth"
+import { UserRole } from "@/types/auth"
 import type { PropertyType } from "@/types/property"
 import { toast } from "sonner"
 import { fetchWishlist, type WishlistItem } from "@/services/dashboardService"
@@ -28,7 +29,7 @@ const defaultUser: User = {
   id: "",
   email: "",
   fullName: "",
-  role: "TENANT" as any,
+  role: UserRole.TENANT,
   isVerified: false,
 }
 
@@ -97,6 +98,7 @@ export default function ProfilePage() {
           fullName: data.fullName || authUser?.fullName || "",
           email: data.email || authUser?.email || "",
           avatar: data.profileImageUrl,
+          role: (data.role as UserRole) || authUser?.role || prev.role,
         }))
         setFormData({
           name: data.fullName || authUser?.fullName || "",

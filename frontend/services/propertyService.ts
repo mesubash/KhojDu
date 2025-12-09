@@ -67,6 +67,9 @@ export async function fetchProperty(id: string): Promise<PropertyDetail> {
   const cached = getCached<PropertyDetail>(cacheKey)
   if (cached) return cached
   const { data } = await axiosInstance.get<ApiResponse<PropertyDetail>>(`/properties/${id}`)
+  if (!data.data) {
+    throw new Error("Property not found")
+  }
   setCached(cacheKey, data.data, 60_000)
   return data.data
 }
@@ -88,6 +91,9 @@ export async function updateProperty(id: string, payload: Partial<PropertyCreate
 
 export async function fetchLandlordProperty(id: string): Promise<PropertyDetail> {
   const { data } = await axiosInstance.get<ApiResponse<PropertyDetail>>(`/properties/landlord/${id}`)
+  if (!data.data) {
+    throw new Error("Property not found")
+  }
   return data.data
 }
 

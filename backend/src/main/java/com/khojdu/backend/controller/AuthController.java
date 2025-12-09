@@ -109,6 +109,19 @@ public class AuthController {
                 SuccessResponse.of("User logged out successfully")));
     }
 
+    @PostMapping("/reactivate")
+    @Operation(summary = "Reactivate account", description = "Reactivate an inactive account by confirming credentials")
+    public ResponseEntity<ApiResponse<JwtResponse>> reactivate(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletResponse response) {
+        JwtResponse jwtResponse = authService.reactivateAccount(request);
+
+        setRefreshTokenCookie(response, jwtResponse.getRefreshToken());
+        JwtResponse responseBody = new JwtResponse(jwtResponse.getAccessToken(), jwtResponse.getUser());
+
+        return ResponseEntity.ok(ApiResponse.success("Account reactivated successfully", responseBody));
+    }
+
     @PostMapping("/forgot-password")
     @Operation(summary = "Forgot password", description = "Send password reset email")
     public ResponseEntity<ApiResponse<SuccessResponse>> forgotPassword(@RequestParam String email) {

@@ -177,7 +177,6 @@ export default function ListingDetailPage() {
         setSubmittingReview(true)
         await submitReview(propertyId!, {
           rating: reviewForm.rating,
-          overallRating: reviewForm.rating,
           reviewText: reviewForm.review || undefined,
           stayDurationMonths: reviewForm.stayDuration ? Number(reviewForm.stayDuration) : undefined,
         })

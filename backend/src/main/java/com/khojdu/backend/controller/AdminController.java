@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.khojdu.backend.entity.enums.PropertyStatus;
+import com.khojdu.backend.entity.enums.UserRole;
 import java.util.Map;
 import java.util.UUID;
 
@@ -99,5 +101,29 @@ public class AdminController {
         adminService.rejectVerification(verificationId, reason);
         return ResponseEntity.ok(ApiResponse.success("Verification rejected",
                 SuccessResponse.of("Landlord verification rejected")));
+    }
+
+    @GetMapping("/users")
+    @Operation(summary = "List users", description = "List users with filters for admin")
+    public ResponseEntity<ApiResponse<PagedResponse<?>>> listUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) UserRole role,
+            @RequestParam(required = false) Boolean verified,
+            @RequestParam(required = false) Boolean active) {
+        PagedResponse<?> response = adminService.getUsers(page, size, search, role, verified, active);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/properties")
+    @Operation(summary = "List properties", description = "List properties with filters for admin")
+    public ResponseEntity<ApiResponse<PagedResponse<?>>> listProperties(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) PropertyStatus status) {
+        PagedResponse<?> response = adminService.getProperties(page, size, search, status);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

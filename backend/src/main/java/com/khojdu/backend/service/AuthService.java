@@ -12,6 +12,8 @@ public interface AuthService {
 
     void logout(String accessToken);
 
+    JwtResponse reactivateAccount(LoginRequest request);
+
     void forgotPassword(String email);
 
     void resetPassword(String token, String newPassword);

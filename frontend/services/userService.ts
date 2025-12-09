@@ -42,10 +42,16 @@ export interface UserProfileUpdatePayload {
 
 export async function fetchProfile(): Promise<UserProfile> {
   const { data } = await axiosInstance.get<ApiResponse<UserProfile>>("/users/profile")
+  if (!data.data) {
+    throw new Error("Profile not found")
+  }
   return data.data
 }
 
 export async function updateProfile(payload: UserProfileUpdatePayload): Promise<UserProfile> {
   const { data } = await axiosInstance.put<ApiResponse<UserProfile>>("/users/profile", payload)
+  if (!data.data) {
+    throw new Error("Profile not found")
+  }
   return data.data
 }

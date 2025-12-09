@@ -1,6 +1,8 @@
 package com.khojdu.backend.service;
 
 import com.khojdu.backend.dto.common.PagedResponse;
+import com.khojdu.backend.entity.enums.PropertyStatus;
+import com.khojdu.backend.entity.enums.UserRole;
 
 import java.util.Map;
 import java.util.UUID;
@@ -15,4 +17,6 @@ public interface AdminService {
     PagedResponse<?> getPendingVerifications(int page, int size);
     void approveVerification(UUID verificationId);
     void rejectVerification(UUID verificationId, String reason);
+    PagedResponse<?> getUsers(int page, int size, String search, UserRole role, Boolean verified, Boolean active);
+    PagedResponse<?> getProperties(int page, int size, String search, PropertyStatus status);
 }

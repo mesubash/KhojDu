@@ -42,6 +42,20 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT COUNT(u) FROM User u WHERE u.isVerified = true AND u.role = :role")
     Long countVerifiedByRole(@Param("role") UserRole role);
 
+    @Query("""
+        SELECT u FROM User u
+        WHERE (:search IS NULL OR LOWER(CAST(u.fullName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+            OR LOWER(CAST(u.email AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
+          AND (:role IS NULL OR u.role = :role)
+          AND (:verified IS NULL OR u.isVerified = :verified)
+          AND (:active IS NULL OR u.isActive = :active)
+        """)
+    Page<User> searchAdminUsers(@Param("search") String search,
+                                @Param("role") UserRole role,
+                                @Param("verified") Boolean verified,
+                                @Param("active") Boolean active,
+                                Pageable pageable);
+
     UUID id(UUID id);
 
 }
