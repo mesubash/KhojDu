@@ -1,0 +1,33 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: khojdu-backend:latest
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SERVER_PORT: ${SERVER_PORT:-8089}
+      # External Postgres (e.g., Neon). Set DATABASE_URL in .env to your external endpoint.
+      DATABASE_URL: ${DATABASE_URL:-"jdbc:postgresql://your-neon-host:5432/yourdb?user=youruser&password=yourpassword"}
+      SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-false}
+      # External Redis endpoint
+      SPRING_REDIS_URL: ${SPRING_REDIS_URL:-"redis://your-redis-host:6379"}
+      LOG_FILE_PATH: ${LOG_FILE_PATH:-/app/logs/khojdu-backend.log}
+      FILE_UPLOAD_DIR: ${FILE_UPLOAD_DIR:-/app/uploads}
+      JAVA_OPTS: ${JAVA_OPTS:--XX:InitialRAMPercentage=40 -XX:MaxRAMPercentage=75 -XX:+UseG1GC -Duser.timezone=Asia/Kathmandu}
+      TZ: ${TZ:-UTC}
+    ports:
+      - "${SERVER_PORT:-8089}:8089"
+    volumes:
+      - uploads_data:/app/uploads
+      - logs_data:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8089/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+    restart: unless-stopped
+
+volumes:
+  uploads_data:
+  logs_data:
