@@ -165,13 +165,15 @@ export interface LandlordProperty {
   image?: string
 }
 
-export async function fetchLandlordProperties(params: { page?: number; size?: number } = {}) {
-  const { page = 0, size = 10 } = params
+export async function fetchLandlordProperties(params: { page?: number; size?: number; status?: string } = {}) {
+  const { page = 0, size = 10, status } = params
   const cacheKey = `landlord-props-${page}-${size}`
   const cached = getCached<PagedResponse<LandlordProperty>>(cacheKey)
   if (cached) return cached
+  const query = new URLSearchParams({ page: String(page), size: String(size) })
+  if (status) query.set("status", status)
   const { data } = await axiosInstance.get<ApiResponse<PagedResponse<LandlordProperty>>>(
-    `/properties/landlord/my-properties?page=${page}&size=${size}`
+    `/properties/landlord/my-properties?${query.toString()}`
   )
   setCached(cacheKey, data.data, 30_000)
   return data.data

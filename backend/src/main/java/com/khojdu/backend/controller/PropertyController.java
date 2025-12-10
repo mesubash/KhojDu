@@ -78,7 +78,7 @@ public class PropertyController {
     public ResponseEntity<ApiResponse<PropertyResponse>> getLandlordProperty(
             @PathVariable UUID propertyId,
             Principal principal) {
-        PropertyResponse response = propertyService.getPropertyById(propertyId);
+        PropertyResponse response = propertyService.getPropertyById(propertyId, principal.getName());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

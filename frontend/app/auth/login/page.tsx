@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Eye, EyeOff, Mail, Phone, AlertCircle } from "lucide-react"
+import { ArrowLeft, Eye, EyeOff, Mail, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 
 import { useAuth } from "@/context/AuthContext"
@@ -24,7 +24,6 @@ export default function LoginPage() {
 
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
-  const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email")
   const [step, setStep] = useState(1)
   const [verificationCode, setVerificationCode] = useState("")
   const [inactiveMessage, setInactiveMessage] = useState<string | null>(null)
@@ -95,17 +94,19 @@ export default function LoginPage() {
     setInactiveMessage(null)
     setVerifyMessage(null)
 
+    const identifier = formData.email.trim()
+
     // Validate form
-    if (!formData.email || !formData.password) {
+    if (!identifier || !formData.password) {
       toast.error("Please fill in all fields")
       return
     }
 
     try {
-      console.log("[Login Page] Attempting login with:", formData.email)
+      console.log("[Login Page] Attempting login with:", identifier)
 
       const loggedInUser = await login({
-        email: formData.email,
+        email: identifier,
         password: formData.password,
       })
 
@@ -283,60 +284,21 @@ export default function LoginPage() {
 
             {step === 1 ? (
               <form onSubmit={handleSubmit} className="space-y-6">
-                <Tabs
-                  value={loginMethod}
-                  onValueChange={(value) => setLoginMethod(value as "email" | "phone")}
-                >
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger
-                      value="email"
-                      className="flex items-center space-x-2 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700 data-[state=active]:border data-[state=active]:border-orange-200"
-                    >
-                      <Mail className="h-4 w-4" />
-                      <span>Email</span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="phone"
-                      className="flex items-center space-x-2 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700 data-[state=active]:border data-[state=active]:border-orange-200"
-                    >
-                      <Phone className="h-4 w-4" />
-                      <span>Phone</span>
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="email" className="space-y-4 mt-4">
-                    <Label htmlFor="email" className="text-sm font-medium">
-                      Email Address
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={formData.email}
-                      onChange={(e) => handleInputChange("email", e.target.value)}
-                      required
-                      disabled={isLoading}
-                      className="h-12 bg-white/10 dark:bg-gray-900/20 border border-white/20 dark:border-white/15 shadow-md backdrop-blur-xl placeholder:text-muted-foreground/30 placeholder:font-light transition-all duration-300 focus:bg-white/90 dark:focus:bg-gray-900/80 focus:backdrop-blur-xl focus:ring-2 focus:ring-orange-300/70 focus:border-orange-300/70 focus:shadow-lg focus:shadow-orange-500/20 focus:placeholder:text-muted-foreground/60"
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="phone" className="space-y-4 mt-4">
-                    <Label htmlFor="phone" className="text-sm font-medium">
-                      Phone Number
-                    </Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+977 9812345678"
-                      value={formData.phone}
-                      onChange={(e) => handleInputChange("phone", e.target.value)}
-                      required
-                      disabled={isLoading}
-                      maxLength={14}
-                      className="h-12 bg-white/10 dark:bg-gray-900/20 border border-white/20 dark:border-white/15 shadow-md backdrop-blur-xl placeholder:text-muted-foreground/30 placeholder:font-light transition-all duration-300 focus:bg-white/90 dark:focus:bg-gray-900/80 focus:backdrop-blur-xl focus:ring-2 focus:ring-orange-300/70 focus:border-orange-300/70 focus:shadow-lg focus:shadow-orange-500/20 focus:placeholder:text-muted-foreground/60"
-                    />
-                  </TabsContent>
-                </Tabs>
+                <div className="space-y-4 mt-4">
+                  <Label htmlFor="email" className="text-sm font-medium">
+                    Email Address
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="h-12 bg-white/10 dark:bg-gray-900/20 border border-white/20 dark:border-white/15 shadow-md backdrop-blur-xl placeholder:text-muted-foreground/30 placeholder:font-light transition-all duration-300 focus:bg-white/90 dark:focus:bg-gray-900/80 focus:backdrop-blur-xl focus:ring-2 focus:ring-orange-300/70 focus:border-orange-300/70 focus:shadow-lg focus:shadow-orange-500/20 focus:placeholder:text-muted-foreground/60"
+                  />
+                </div>
 
                 <div>
                   <Label htmlFor="password" className="text-sm font-medium">

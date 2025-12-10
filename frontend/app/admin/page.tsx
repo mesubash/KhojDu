@@ -483,6 +483,13 @@ export default function AdminDashboard() {
       color: "text-green-600",
       target: "listings",
     },
+    {
+      title: "Pending Listings",
+      value: stats?.pendingApproval ?? "--",
+      icon: AlertTriangle,
+      color: "text-amber-600",
+      target: "listings",
+    },
     { title: "Featured", value: stats?.featuredProperties ?? "--", icon: TrendingUp, color: "text-teal-600", target: "listings" },
     {
       title: "Pending Verifications",
@@ -1014,9 +1021,17 @@ export default function AdminDashboard() {
               {...cardHover}
             >
               <Card className="rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/65 backdrop-blur-2xl border border-white/20 dark:border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-xl">Listings ({propertiesData.length})</CardTitle>
-                  {listError && <p className="text-sm text-red-600">{listError}</p>}
+                <CardHeader className="flex items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-xl">Listings ({propertiesData.length})</CardTitle>
+                    <p className="text-sm text-muted-foreground">All listings; pending need approval.</p>
+                    {listError && <p className="text-sm text-red-600">{listError}</p>}
+                  </div>
+                  {(stats?.pendingApproval ?? 0) > 0 && (
+                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                      Pending: {stats?.pendingApproval}
+                    </Badge>
+                  )}
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {listLoading && (

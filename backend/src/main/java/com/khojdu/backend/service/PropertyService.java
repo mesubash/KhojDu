@@ -15,7 +15,7 @@ public interface PropertyService {
 
     void deleteProperty(UUID propertyId, String landlordEmail);
 
-    PropertyResponse getPropertyById(UUID propertyId);
+    PropertyResponse getPropertyById(UUID propertyId, String requesterId);
 
     PropertyResponse getPublicPropertyById(UUID propertyId, String userEmail);
 
@@ -41,4 +41,3 @@ public interface PropertyService {
 
     List<PropertyListResponse> getSimilarProperties(UUID propertyId, int limit);
 }
-

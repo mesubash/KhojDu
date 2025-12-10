@@ -45,6 +45,7 @@ export default function LandlordDashboard() {
   const [propertiesPage, setPropertiesPage] = useState(0)
   const [propertiesHasMore, setPropertiesHasMore] = useState(false)
   const [propertiesLoadingMore, setPropertiesLoadingMore] = useState(false)
+  const [filterStatus, setFilterStatus] = useState<"all" | "approved" | "pending" | "rejected" | "inactive">("all")
   const [isMutating, setIsMutating] = useState<string | null>(null)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.22 } } }
@@ -61,23 +62,6 @@ export default function LandlordDashboard() {
     } catch (err) {
       console.error("[Dashboard] Logout failed", err)
     }
-  }
-
-  // Show loading state while checking authentication
-  if (isLoading) {
-    return (
-      <div className="page-shell flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Spinner size={40} />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Don't render dashboard if not authenticated
-  if (!isAuthenticated || !user || user.role !== UserRole.LANDLORD) {
-    return null
   }
 
   const derivedStats = [
@@ -118,7 +102,7 @@ export default function LandlordDashboard() {
       await togglePropertyAvailability(propertyId)
       toast.success("Availability updated")
       // refresh list first page
-      loadProperties(0, false)
+      loadProperties(0, false, filterStatus === "all" ? undefined : filterStatus.toUpperCase())
     } catch (err) {
       console.error("[LandlordDashboard] Toggle availability failed", err)
       toast.error("Could not update availability.")
@@ -143,10 +127,10 @@ export default function LandlordDashboard() {
     }
   }
 
-  const loadProperties = async (page = 0, append = false) => {
+  const loadProperties = async (page = 0, append = false, status?: string) => {
     append ? setPropertiesLoadingMore(true) : setIsFetching(true)
     try {
-      const resp = await fetchLandlordProperties({ page, size: 10 })
+      const resp = await fetchLandlordProperties({ page, size: 10, status })
       setProperties((prev) => (append ? [...prev, ...(resp?.content || [])] : resp?.content || []))
       setPropertiesPage(page)
       const totalElements = resp?.totalElements ?? resp?.content?.length ?? 0
@@ -181,8 +165,25 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     if (!isAuthenticated) return
-    loadProperties(0, false)
-  }, [isAuthenticated])
+    loadProperties(0, false, filterStatus === "all" ? undefined : filterStatus.toUpperCase())
+  }, [isAuthenticated, filterStatus])
+
+  // Show loading state while checking authentication (place after hooks to avoid hook order issues)
+  if (isLoading) {
+    return (
+      <div className="page-shell flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Spinner size={40} />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render dashboard if not authenticated
+  if (!isAuthenticated || !user || user.role !== UserRole.LANDLORD) {
+    return null
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
@@ -460,22 +461,22 @@ export default function LandlordDashboard() {
                         {properties.slice(0, 3).map((listing) => (
                           <div key={listing.id} className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <div className="w-9 h-9 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center text-sm font-semibold">
-                                {listing.title.slice(0, 1)}
-                              </div>
-                              <div>
-                                <p className="font-medium text-sm text-foreground truncate max-w-[160px]">{listing.title}</p>
-                                <p className="text-xs text-muted-foreground">{listing.location}</p>
-                              </div>
+                            <div className="w-9 h-9 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center text-sm font-semibold">
+                              {listing.title.slice(0, 1)}
                             </div>
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">
-                              {listing.status || "Active"}
-                            </Badge>
+                            <div>
+                              <p className="font-medium text-sm text-foreground truncate max-w-[160px]">{listing.title}</p>
+                              <p className="text-xs text-muted-foreground">{listing.location}</p>
+                            </div>
                           </div>
-                        ))}
-                      </CardContent>
-                    </Card>
-                  </motion.div>
+                          <Badge variant="outline" className="text-xs">
+                            {listing.status || "Active"}
+                          </Badge>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </motion.div>
                   <motion.div variants={fadeUp} {...cardHover}>
                     <Card className="rounded-2xl border-orange-100/60 dark:border-gray-800/60 shadow-sm bg-white/85 dark:bg-gray-900/70 backdrop-blur-xl">
                       <CardHeader>
@@ -500,12 +501,29 @@ export default function LandlordDashboard() {
                     <h1 className="text-3xl font-bold text-foreground">My Listings</h1>
                     <p className="text-muted-foreground">Manage your property listings and performance</p>
                   </div>
-                  <Link href="/dashboard/create">
-                    <Button className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white rounded-lg">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add New Listing
-                    </Button>
-                  </Link>
+                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto sm:items-center">
+                    <Select
+                      value={filterStatus}
+                      onValueChange={(value: typeof filterStatus) => setFilterStatus(value)}
+                    >
+                      <SelectTrigger className="w-full sm:w-44">
+                        <SelectValue placeholder="Filter status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Link href="/dashboard/create">
+                      <Button className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white rounded-lg">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add New Listing
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
 
                 {fetchError && (
@@ -525,13 +543,30 @@ export default function LandlordDashboard() {
                 )}
 
                 <div className="grid gap-6">
-                  {(isFetching ? [] : properties).map((listing) => {
+                  {(isFetching
+                    ? []
+                    : [...properties]
+                        .filter((p) => {
+                          if (filterStatus === "all") return true
+                          const status = (p.status || "").toLowerCase()
+                          if (filterStatus === "approved") return status === "approved" || status === "active"
+                          if (filterStatus === "pending") return status === "pending"
+                          if (filterStatus === "rejected") return status === "rejected"
+                          if (filterStatus === "inactive") return status === "inactive"
+                          return true
+                        })
+                        .sort((a, b) => {
+                          const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0
+                          const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0
+                          return bDate - aDate
+                        })).map((listing) => {
                     const locationLabel =
                       listing.location ||
                       [listing.address, listing.city, listing.district].filter(Boolean).join(", ") ||
                       "Not specified"
                     const displayLocation = locationLabel.split(",").slice(0, 3).map((part) => part.trim()).filter(Boolean).join(", ")
                     const isActive = listing.isAvailable ?? listing.status?.toLowerCase() === "active"
+                    const statusLabel = listing.status || (isActive ? "ACTIVE" : "UNKNOWN")
 
                     return (
                       <motion.div key={listing.id} variants={fadeUp} {...cardHover}>
@@ -556,12 +591,17 @@ export default function LandlordDashboard() {
                                         {displayLocation || "Not specified"}
                                       </span>
                                     </span>
-                                    <Badge
-                                      variant={isActive ? "default" : "secondary"}
-                                      className={`w-fit text-xs ${isActive ? "bg-green-100 text-green-800" : ""}`}
-                                    >
-                                      {isActive ? "Active" : listing.status || "Inactive"}
-                                    </Badge>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <Badge
+                                        variant={isActive ? "default" : "secondary"}
+                                        className={`w-fit text-xs ${isActive ? "bg-green-100 text-green-800" : ""}`}
+                                      >
+                                        {isActive ? "Active" : "Inactive"}
+                                      </Badge>
+                                      <Badge variant="outline" className="text-xs">
+                                        Status: {statusLabel}
+                                      </Badge>
+                                    </div>
                                   </div>
                                   {/* Rating and Reviews */}
                                   <div className="flex items-center space-x-2 mt-2">

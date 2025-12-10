@@ -23,6 +23,7 @@ import {
   Droplets,
   Zap,
   Shield,
+  AlertTriangle,
   Car,
   Tv,
   Star,
@@ -36,8 +37,9 @@ import Link from "next/link"
 import { GoogleMaps } from "@/components/google-maps"
 import { Header } from "@/components/header"
 import { useParams, useRouter } from "next/navigation"
-import { fetchProperty, fetchPropertyReviewSummary, fetchPropertyReviews, submitReview } from "@/services/propertyService"
+import { fetchProperty, fetchLandlordProperty, fetchPropertyReviewSummary, fetchPropertyReviews, submitReview } from "@/services/propertyService"
 import type { PropertyDetail } from "@/types/property"
+import { UserRole } from "@/types/auth"
 import { toast } from "sonner"
 import type { ReviewSummary, Review } from "@/types/review"
 import { Spinner } from "@/components/ui/spinner"
@@ -50,7 +52,7 @@ import { motion } from "framer-motion"
 export default function ListingDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const propertyId = Array.isArray(params?.id) ? params.id[0] : params?.id
   const [property, setProperty] = useState<PropertyDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -98,7 +100,15 @@ export default function ListingDetailPage() {
         return
       }
       try {
-        const data = await fetchProperty(propertyId)
+        let data: PropertyDetail | null = null
+        const isPrivileged = isAuthenticated && (user?.role === UserRole.ADMIN || user?.role === UserRole.LANDLORD)
+
+        if (isPrivileged) {
+          // Owners/admins should bypass public 404 by hitting landlord endpoint first
+          data = await fetchLandlordProperty(propertyId)
+        } else {
+          data = await fetchProperty(propertyId)
+        }
         setProperty(data)
         setError(null)
         setCurrentImageIndex(0)
@@ -118,7 +128,7 @@ export default function ListingDetailPage() {
         setReviewsHasMore((reviewPage?.page ?? 0) + 1 < (totalPages || 0))
       } catch (err: any) {
         console.error("[Listing] Failed to load property", err)
-        setError("Unable to load this listing right now.")
+        setError("This listing is unavailable or you don't have access.")
         toast.error("Could not load listing.")
       } finally {
         setLoadingReviews(false)
@@ -126,7 +136,7 @@ export default function ListingDetailPage() {
       }
     }
     loadProperty()
-  }, [propertyId])
+  }, [propertyId, isAuthenticated, user?.role])
 
   // Handle responsive behavior without causing re-renders
   useEffect(() => {
@@ -215,6 +225,60 @@ export default function ListingDetailPage() {
     setShowComplaintModal(true)
   }, [isAuthenticated, propertyId, router])
 
+  const handleHelpfulClick = useCallback((reviewId: number) => {
+    setHelpfulReviews((prev) => (prev.includes(reviewId) ? prev.filter((id) => id !== reviewId) : [...prev, reviewId]))
+  }, [])
+
+  const renderStars = (
+    rating: number,
+    size: "sm" | "md" | "lg" = "md",
+    interactive = false,
+    onRate?: (rating: number) => void,
+  ) => {
+    const sizeClasses = {
+      sm: "h-3 w-3",
+      md: "h-4 w-4",
+      lg: "h-5 w-5",
+    }
+
+    return (
+      <div className="flex items-center space-x-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`${sizeClasses[size]} ${
+              star <= rating ? "text-yellow-400 fill-current" : "text-muted-foreground/40"
+            } ${interactive ? "cursor-pointer hover:text-yellow-400" : ""}`}
+            onClick={() => interactive && onRate?.(star)}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  const getAmenityIcon = (label: string) => {
+    const key = label.toLowerCase()
+    if (key.includes("wifi") || key.includes("internet")) return Wifi
+    if (key.includes("water")) return Droplets
+    if (key.includes("power") || key.includes("electric")) return Zap
+    if (key.includes("security")) return Shield
+    if (key.includes("park")) return Car
+    if (key.includes("tv")) return Tv
+    return null
+  }
+
+  const locationLabel =
+    [property?.address, property?.city, property?.district].filter(Boolean).join(", ") || "Location not specified"
+  const rentValue = property?.monthlyRent ? Number(property.monthlyRent) : null
+  const depositValue = property?.securityDeposit ? Number(property.securityDeposit) : null
+  const avgRating = reviewSummary?.averageRating ?? property?.stats?.averageRating ?? 0
+  const totalReviews = reviewSummary?.totalReviews ?? property?.stats?.reviewCount ?? reviews.length
+  const views = property?.stats?.viewCount ?? 0
+  const postedDate = property?.createdAt ? new Date(property.createdAt).toLocaleDateString() : "Recently"
+  const landlord = property?.landlord
+  const showStatusBanner =
+    property?.status && property.status !== "APPROVED" && (user?.role === UserRole.ADMIN || user?.id === landlord?.id)
+
   const handleSubmitComplaint = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
@@ -297,58 +361,6 @@ export default function ListingDetailPage() {
     },
     [reviewForm, propertyId],
   )
-
-  const handleHelpfulClick = useCallback((reviewId: number) => {
-    setHelpfulReviews((prev) => (prev.includes(reviewId) ? prev.filter((id) => id !== reviewId) : [...prev, reviewId]))
-  }, [])
-
-  const renderStars = (
-    rating: number,
-    size: "sm" | "md" | "lg" = "md",
-    interactive = false,
-    onRate?: (rating: number) => void,
-  ) => {
-    const sizeClasses = {
-      sm: "h-3 w-3",
-      md: "h-4 w-4",
-      lg: "h-5 w-5",
-    }
-
-    return (
-      <div className="flex items-center space-x-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            className={`${sizeClasses[size]} ${
-              star <= rating ? "text-yellow-400 fill-current" : "text-muted-foreground/40"
-            } ${interactive ? "cursor-pointer hover:text-yellow-400" : ""}`}
-            onClick={() => interactive && onRate?.(star)}
-          />
-        ))}
-      </div>
-    )
-  }
-
-  const getAmenityIcon = (label: string) => {
-    const key = label.toLowerCase()
-    if (key.includes("wifi") || key.includes("internet")) return Wifi
-    if (key.includes("water")) return Droplets
-    if (key.includes("power") || key.includes("electric")) return Zap
-    if (key.includes("security")) return Shield
-    if (key.includes("park")) return Car
-    if (key.includes("tv")) return Tv
-    return null
-  }
-
-  const locationLabel =
-    [property?.address, property?.city, property?.district].filter(Boolean).join(", ") || "Location not specified"
-  const rentValue = property?.monthlyRent ? Number(property.monthlyRent) : null
-  const depositValue = property?.securityDeposit ? Number(property.securityDeposit) : null
-  const avgRating = reviewSummary?.averageRating ?? property?.stats?.averageRating ?? 0
-  const totalReviews = reviewSummary?.totalReviews ?? property?.stats?.reviewCount ?? reviews.length
-  const views = property?.stats?.viewCount ?? 0
-  const postedDate = property?.createdAt ? new Date(property.createdAt).toLocaleDateString() : "Recently"
-  const landlord = property?.landlord
   const messagingDisabled = false
   const amenities =
     property?.amenities?.map((a) => ({
@@ -455,6 +467,22 @@ export default function ListingDetailPage() {
     <div className="page-shell">
       <Header />
       
+      {showStatusBanner && (
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              <span className="font-semibold">
+                This listing is {property?.status?.toLowerCase() || "pending"} and not visible publicly.
+              </span>
+            </div>
+            <span className="text-sm text-amber-700 dark:text-amber-200">
+              Only you and admins can view it until it is approved.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Back to Search Navigation */}
       <div className="bg-card border-b border-border/60 backdrop-blur-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center">

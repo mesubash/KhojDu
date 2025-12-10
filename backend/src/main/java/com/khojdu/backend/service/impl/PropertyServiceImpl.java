@@ -9,6 +9,7 @@ import com.khojdu.backend.entity.enums.PlaceType;
 import com.khojdu.backend.entity.enums.PropertyStatus;
 import com.khojdu.backend.entity.enums.PropertyType;
 import com.khojdu.backend.entity.enums.VerificationStatus;
+import com.khojdu.backend.entity.enums.UserRole;
 import com.khojdu.backend.exception.BadRequestException;
 import com.khojdu.backend.exception.ForbiddenException;
 import com.khojdu.backend.exception.ResourceNotFoundException;
@@ -125,9 +126,9 @@ public class PropertyServiceImpl implements PropertyService {
         property.setAvailableFrom(request.getAvailableFrom());
         property.setIsAvailable(true);
 
-        // Set status based on landlord verification
-        boolean isLandlordVerified = Boolean.TRUE.equals(landlord.getIsVerified());
-        property.setStatus(isLandlordVerified ? PropertyStatus.APPROVED : PropertyStatus.PENDING);
+        // Always require admin approval for new listings (except when created by an admin)
+        boolean createdByAdmin = landlord.getRole().name().equals("ADMIN");
+        property.setStatus(createdByAdmin ? PropertyStatus.APPROVED : PropertyStatus.PENDING);
 
         property = propertyRepository.save(property);
 
@@ -265,9 +266,26 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional(readOnly = true)
-    public PropertyResponse getPropertyById(UUID propertyId) {
+    public PropertyResponse getPropertyById(UUID propertyId, String requesterId) {
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
+
+        User requester = null;
+        if (requesterId != null) {
+            try {
+                requester = userRepository.findById(UUID.fromString(requesterId)).orElse(null);
+            } catch (IllegalArgumentException ignored) {
+                requester = userRepository.findByEmail(requesterId).orElse(null);
+            }
+        }
+
+        boolean isOwner = requester != null && property.getLandlord() != null
+                && property.getLandlord().getId().equals(requester.getId());
+        boolean isAdmin = requester != null && requester.getRole() == UserRole.ADMIN;
+
+        if (!isOwner && !isAdmin) {
+            throw new ForbiddenException("You are not allowed to view this property.");
+        }
 
         return propertyMapper.toPropertyResponse(property);
     }
@@ -278,21 +296,31 @@ public class PropertyServiceImpl implements PropertyService {
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
 
-        if (!property.getStatus().equals(PropertyStatus.APPROVED)) {
+        User requester = null;
+        if (userId != null) {
+            try {
+                requester = userRepository.findById(UUID.fromString(userId)).orElse(null);
+            } catch (IllegalArgumentException ignored) {
+                requester = userRepository.findByEmail(userId).orElse(null);
+            }
+        }
+
+        boolean isOwner = requester != null && property.getLandlord() != null
+                && property.getLandlord().getId().equals(requester.getId());
+        boolean isAdmin = requester != null && requester.getRole() == UserRole.ADMIN;
+
+        if (!property.getStatus().equals(PropertyStatus.APPROVED) && !isOwner && !isAdmin) {
             throw new ResourceNotFoundException("Property not found");
         }
 
         // Record property view
-        User user = null;
-        if (userId != null) {
-            user = userRepository.findById(UUID.fromString(userId)).orElse(null);
+        if (property.getStatus().equals(PropertyStatus.APPROVED)) {
+            PropertyView view = new PropertyView();
+            view.setProperty(property);
+            view.setUser(requester);
+            view.setViewedAt(LocalDateTime.now());
+            propertyViewRepository.save(view);
         }
-
-        PropertyView view = new PropertyView();
-        view.setProperty(property);
-        view.setUser(user);
-        view.setViewedAt(LocalDateTime.now());
-        propertyViewRepository.save(view);
 
         return propertyMapper.toPropertyResponse(property);
     }
