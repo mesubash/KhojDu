@@ -8,6 +8,7 @@ import com.khojdu.backend.entity.*;
 import com.khojdu.backend.entity.enums.PlaceType;
 import com.khojdu.backend.entity.enums.PropertyStatus;
 import com.khojdu.backend.entity.enums.PropertyType;
+import com.khojdu.backend.entity.enums.VerificationStatus;
 import com.khojdu.backend.exception.BadRequestException;
 import com.khojdu.backend.exception.ForbiddenException;
 import com.khojdu.backend.exception.ResourceNotFoundException;
@@ -63,6 +64,14 @@ public class PropertyServiceImpl implements PropertyService {
 
         if (!landlord.getRole().name().equals("LANDLORD") && !landlord.getRole().name().equals("ADMIN")) {
             throw new ForbiddenException("Only landlords can create properties");
+        }
+        // Enforce landlord verification (not just email) unless admin
+        if (!landlord.getRole().name().equals("ADMIN")) {
+            boolean isVerifiedLandlord = landlord.getLandlordVerification() != null
+                    && landlord.getLandlordVerification().getVerificationStatus() == VerificationStatus.APPROVED;
+            if (!isVerifiedLandlord) {
+                throw new ForbiddenException("Landlord verification required before creating a listing.");
+            }
         }
 
         // Validate coordinates if provided

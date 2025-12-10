@@ -63,27 +63,6 @@ export default function LandlordDashboard() {
     }
   }
 
-  // Protect the dashboard - redirect if not authenticated
-  useEffect(() => {
-    if (isLoading) return
-
-    if (!isAuthenticated) {
-      console.log('[Dashboard] User not authenticated, redirecting to login')
-      router.replace('/auth/login?redirect=/dashboard/landlord')
-      return
-    }
-
-    if (user && user.role !== UserRole.LANDLORD) {
-      const target = getDashboardRouteForRole(user.role)
-      router.replace(target)
-    }
-  }, [isAuthenticated, isLoading, router, user])
-
-  useEffect(() => {
-    if (!isAuthenticated) return
-    loadProperties(0, false)
-  }, [isAuthenticated])
-
   // Show loading state while checking authentication
   if (isLoading) {
     return (
@@ -183,6 +162,27 @@ export default function LandlordDashboard() {
       append ? setPropertiesLoadingMore(false) : setIsFetching(false)
     }
   }
+
+  // Protect the dashboard - redirect if not authenticated
+  useEffect(() => {
+    if (isLoading) return
+
+    if (!isAuthenticated) {
+      console.log('[Dashboard] User not authenticated, redirecting to login')
+      router.replace('/auth/login?redirect=/dashboard/landlord')
+      return
+    }
+
+    if (user && user.role !== UserRole.LANDLORD) {
+      const target = getDashboardRouteForRole(user.role)
+      router.replace(target)
+    }
+  }, [isAuthenticated, isLoading, router, user])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    loadProperties(0, false)
+  }, [isAuthenticated])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">

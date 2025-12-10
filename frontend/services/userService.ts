@@ -22,6 +22,10 @@ export interface UserProfile {
   hasPets?: boolean
   smokingAllowed?: boolean
   drinkingAllowed?: boolean
+  landlordVerificationStatus?: string
+  landlordVerificationNotes?: string | null
+  landlordVerificationSubmittedAt?: string | null
+  landlordVerificationReviewedAt?: string | null
 }
 
 export interface UserProfileUpdatePayload {
@@ -53,5 +57,31 @@ export async function updateProfile(payload: UserProfileUpdatePayload): Promise<
   if (!data.data) {
     throw new Error("Profile not found")
   }
+  return data.data
+}
+
+export interface LandlordVerificationPayload {
+  citizenshipNumber: string
+  citizenshipFrontImage: string
+  citizenshipBackImage: string
+}
+
+export async function fetchLandlordVerification() {
+  const { data } = await axiosInstance.get<ApiResponse<any>>("/users/landlord-verification")
+  return data.data
+}
+
+export async function submitLandlordVerification(payload: LandlordVerificationPayload) {
+  const { data } = await axiosInstance.post<ApiResponse<any>>("/users/landlord-verification", payload)
+  return data.data
+}
+
+export async function uploadVerificationDocument(file: File, folder = "landlord-verification") {
+  const formData = new FormData()
+  formData.append("file", file)
+  const { data } = await axiosInstance.post<ApiResponse<string>>(`/upload/image?folder=${folder}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 120000,
+  })
   return data.data
 }

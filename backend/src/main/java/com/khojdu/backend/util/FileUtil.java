@@ -13,8 +13,11 @@ public class FileUtil {
     );
 
     private static final List<String> ALLOWED_DOCUMENT_TYPES = Arrays.asList(
-            "application/pdf", "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            // Also allow images for document-style uploads (e.g., citizenship photos)
+            "image/jpeg", "image/jpg", "image/png", "image/webp"
     );
 
     private static final long MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB

@@ -2,6 +2,8 @@ package com.khojdu.backend.controller;
 
 import com.khojdu.backend.dto.common.ApiResponse;
 import com.khojdu.backend.dto.common.SuccessResponse;
+import com.khojdu.backend.dto.user.LandlordVerificationRequest;
+import com.khojdu.backend.dto.user.LandlordVerificationResponse;
 import com.khojdu.backend.dto.user.UserProfileRequest;
 import com.khojdu.backend.dto.user.UserProfileResponse;
 import com.khojdu.backend.service.UserService;
@@ -47,5 +49,23 @@ public class UserController {
         userService.deleteUserAccount(principal.getName(), password);
         return ResponseEntity.ok(ApiResponse.success("Account deleted successfully",
                 SuccessResponse.of("Your account has been deleted successfully")));
+    }
+
+    @PostMapping("/landlord-verification")
+    @PreAuthorize("hasRole('LANDLORD')")
+    @Operation(summary = "Submit landlord verification", description = "Submit landlord verification documents")
+    public ResponseEntity<ApiResponse<LandlordVerificationResponse>> submitLandlordVerification(
+            @Valid @RequestBody LandlordVerificationRequest request,
+            Principal principal) {
+        LandlordVerificationResponse response = userService.submitLandlordVerification(principal.getName(), request);
+        return ResponseEntity.ok(ApiResponse.success("Verification submitted successfully", response));
+    }
+
+    @GetMapping("/landlord-verification")
+    @PreAuthorize("hasRole('LANDLORD')")
+    @Operation(summary = "Get landlord verification status", description = "Get current landlord verification status")
+    public ResponseEntity<ApiResponse<LandlordVerificationResponse>> getLandlordVerification(Principal principal) {
+        LandlordVerificationResponse response = userService.getLandlordVerification(principal.getName());
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

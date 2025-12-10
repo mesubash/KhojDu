@@ -28,6 +28,22 @@ export interface User {
   hasPets?: boolean;
   smokingAllowed?: boolean;
   drinkingAllowed?: boolean;
+  landlordVerificationStatus?: string;
+  landlordVerificationNotes?: string | null;
+  landlordVerificationSubmittedAt?: string | null;
+  landlordVerificationReviewedAt?: string | null;
+}
+
+export interface LandlordVerification {
+  id?: string;
+  userId?: string;
+  citizenshipNumber: string;
+  citizenshipFrontImage: string;
+  citizenshipBackImage: string;
+  verificationStatus?: string;
+  verificationNotes?: string | null;
+  submittedAt?: string;
+  verifiedAt?: string | null;
 }
 
 export interface AuthTokens {

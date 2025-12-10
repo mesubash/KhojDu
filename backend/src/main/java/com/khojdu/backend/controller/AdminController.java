@@ -152,4 +152,11 @@ public class AdminController {
         PagedResponse<?> response = adminService.getProperties(page, size, search, status);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    @DeleteMapping("/properties/{propertyId}")
+    @Operation(summary = "Delete property", description = "Delete a property as admin")
+    public ResponseEntity<ApiResponse<SuccessResponse>> deleteProperty(@PathVariable UUID propertyId) {
+        adminService.deleteProperty(propertyId);
+        return ResponseEntity.ok(ApiResponse.success("Property deleted", SuccessResponse.of("Property deleted successfully")));
+    }
 }

@@ -36,5 +36,10 @@ public class UserProfileResponse {
     private Boolean hasPets;
     private Boolean smokingAllowed;
     private Boolean drinkingAllowed;
-}
 
+    // Landlord verification (if applicable)
+    private String landlordVerificationStatus;
+    private String landlordVerificationNotes;
+    private LocalDateTime landlordVerificationSubmittedAt;
+    private LocalDateTime landlordVerificationReviewedAt;
+}

@@ -2,8 +2,10 @@ package com.khojdu.backend.mapper;
 
 import com.khojdu.backend.dto.user.UserProfileResponse;
 import com.khojdu.backend.dto.user.UserResponse;
+import com.khojdu.backend.entity.LandlordVerification;
 import com.khojdu.backend.entity.User;
 import com.khojdu.backend.entity.UserProfile;
+import com.khojdu.backend.entity.enums.VerificationStatus;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -52,6 +54,35 @@ public class UserMapper {
             response.setDrinkingAllowed(profile.getDrinkingAllowed());
         }
 
+        // Landlord verification info (if available)
+        LandlordVerification verification = user.getLandlordVerification();
+        if (verification != null) {
+            VerificationStatus status = verification.getVerificationStatus();
+            response.setLandlordVerificationStatus(status != null ? status.name() : null);
+            response.setLandlordVerificationNotes(verification.getVerificationNotes());
+            response.setLandlordVerificationSubmittedAt(verification.getSubmittedAt());
+            response.setLandlordVerificationReviewedAt(verification.getVerifiedAt());
+        }
+
         return response;
+    }
+
+    public com.khojdu.backend.dto.user.LandlordVerificationResponse toLandlordVerificationResponse(LandlordVerification verification) {
+        if (verification == null) return null;
+        com.khojdu.backend.dto.user.LandlordVerificationResponse resp = new com.khojdu.backend.dto.user.LandlordVerificationResponse();
+        resp.setId(verification.getId());
+        if (verification.getUser() != null) {
+            resp.setUserId(verification.getUser().getId());
+            resp.setUserFullName(verification.getUser().getFullName());
+            resp.setUserEmail(verification.getUser().getEmail());
+        }
+        resp.setCitizenshipNumber(verification.getCitizenshipNumber());
+        resp.setCitizenshipFrontImage(verification.getCitizenshipFrontImage());
+        resp.setCitizenshipBackImage(verification.getCitizenshipBackImage());
+        resp.setVerificationStatus(verification.getVerificationStatus());
+        resp.setVerificationNotes(verification.getVerificationNotes());
+        resp.setSubmittedAt(verification.getSubmittedAt());
+        resp.setVerifiedAt(verification.getVerifiedAt());
+        return resp;
     }
 }

@@ -14,8 +14,14 @@ import { Home, ArrowLeft, Edit, Star, MapPin, Calendar, Heart, Camera, Loader2 }
 import Link from "next/link"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
-import { fetchProfile, updateProfile } from "@/services/userService"
-import type { User } from "@/types/auth"
+import {
+  fetchProfile,
+  updateProfile,
+  fetchLandlordVerification,
+  submitLandlordVerification,
+  uploadVerificationDocument,
+} from "@/services/userService"
+import type { User, LandlordVerification } from "@/types/auth"
 import { UserRole } from "@/types/auth"
 import type { PropertyType } from "@/types/property"
 import { toast } from "sonner"
@@ -70,6 +76,18 @@ export default function ProfilePage() {
   const [wishlistLoading, setWishlistLoading] = useState(false)
   const [myReviews, setMyReviews] = useState<Review[]>([])
   const [reviewsLoading, setReviewsLoading] = useState(false)
+  const [verification, setVerification] = useState<LandlordVerification | null>(null)
+  const [verificationLoading, setVerificationLoading] = useState(false)
+  const [verificationSubmitting, setVerificationSubmitting] = useState(false)
+  const [verificationForm, setVerificationForm] = useState({
+    citizenshipNumber: "",
+    citizenshipFrontImage: "",
+    citizenshipBackImage: "",
+  })
+  const [verificationUploading, setVerificationUploading] = useState({
+    front: false,
+    back: false,
+  })
   const glassInputClasses =
     "bg-white/5 dark:bg-gray-900/10 border border-white/15 dark:border-white/10 shadow-sm backdrop-blur-[40px] placeholder:text-muted-foreground/25 transition-all focus:bg-white/50 focus:backdrop-blur-[50px] focus:ring-2 focus:ring-orange-200/60 focus:border-orange-200/60"
   const glassTextareaClasses = glassInputClasses
@@ -104,6 +122,13 @@ export default function ProfilePage() {
           email: data.email || authUser?.email || "",
           avatar: data.profileImageUrl,
           role: (data.role as UserRole) || authUser?.role || prev.role,
+        }))
+        setVerification((prev) => ({
+          ...prev,
+          verificationStatus: data.landlordVerificationStatus,
+          verificationNotes: data.landlordVerificationNotes,
+          submittedAt: data.landlordVerificationSubmittedAt || undefined,
+          verifiedAt: data.landlordVerificationReviewedAt || undefined,
         }))
         setFormData({
           name: data.fullName || authUser?.fullName || "",
@@ -167,8 +192,42 @@ export default function ProfilePage() {
     loadReviews()
   }, [activeTab])
 
+  // Load landlord verification status when tab viewed or profile is landlord
+  useEffect(() => {
+    const loadVerification = async () => {
+      if (profile.role !== UserRole.LANDLORD) return
+      if (activeTab !== "verification" && !verification) {
+        // allow eager load on first mount
+      }
+      setVerificationLoading(true)
+      try {
+        const data = await fetchLandlordVerification()
+        if (data) {
+          setVerification(data)
+          setVerificationForm({
+            citizenshipNumber: data.citizenshipNumber || "",
+            citizenshipFrontImage: data.citizenshipFrontImage || "",
+            citizenshipBackImage: data.citizenshipBackImage || "",
+          })
+        }
+      } catch (err) {
+        console.error("[Profile] Failed to load verification", err)
+      } finally {
+        setVerificationLoading(false)
+      }
+    }
+    if (profile.role === UserRole.LANDLORD && (activeTab === "verification" || !verification)) {
+      loadVerification()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, profile.role])
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleVerificationInput = (field: keyof typeof verificationForm, value: string) => {
+    setVerificationForm((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleSave = async () => {
@@ -194,6 +253,45 @@ export default function ProfilePage() {
     }
   }
 
+  const handleVerificationSubmit = async () => {
+    setVerificationSubmitting(true)
+    try {
+      const payload = {
+        citizenshipNumber: verificationForm.citizenshipNumber.trim(),
+        citizenshipFrontImage: verificationForm.citizenshipFrontImage.trim(),
+        citizenshipBackImage: verificationForm.citizenshipBackImage.trim(),
+      }
+      await submitLandlordVerification(payload)
+      toast.success("Verification submitted. We'll review your documents soon.")
+      setVerification({
+        ...payload,
+        verificationStatus: "PENDING",
+        verificationNotes: null,
+        submittedAt: new Date().toISOString(),
+      } as LandlordVerification)
+    } catch (err: any) {
+      console.error("[Profile] Verification submit failed", err)
+      toast.error(err?.response?.data?.message || "Could not submit verification.")
+    } finally {
+      setVerificationSubmitting(false)
+    }
+  }
+
+  const handleDocumentUpload = async (field: "citizenshipFrontImage" | "citizenshipBackImage", file?: File) => {
+    if (!file) return
+    setVerificationUploading((prev) => ({ ...prev, [field === "citizenshipFrontImage" ? "front" : "back"]: true }))
+    try {
+      const url = await uploadVerificationDocument(file)
+      setVerificationForm((prev) => ({ ...prev, [field]: url || "" }))
+      toast.success("Document uploaded")
+    } catch (err: any) {
+      console.error("[Profile] Document upload failed", err)
+      toast.error(err?.response?.data?.message || "Upload failed")
+    } finally {
+      setVerificationUploading((prev) => ({ ...prev, [field === "citizenshipFrontImage" ? "front" : "back"]: false }))
+    }
+  }
+
   const renderStars = (rating: number) => {
     return (
       <div className="flex items-center space-x-1">
@@ -209,6 +307,17 @@ export default function ProfilePage() {
     const date = new Date(profile.createdAt)
     return date.toLocaleDateString(undefined, { year: "numeric", month: "long" })
   }, [profile.createdAt])
+
+  const isLandlord = profile.role === UserRole.LANDLORD
+  const tabColumns = isLandlord ? "grid-cols-4" : "grid-cols-3"
+
+  const verificationStatusMeta = useMemo(() => {
+    const status = verification?.verificationStatus
+    if (status === "APPROVED") return { label: "Approved", color: "bg-emerald-100 text-emerald-700 border-emerald-200" }
+    if (status === "PENDING") return { label: "Pending review", color: "bg-amber-100 text-amber-700 border-amber-200" }
+    if (status === "REJECTED") return { label: "Rejected", color: "bg-red-100 text-red-700 border-red-200" }
+    return { label: "Not submitted", color: "bg-slate-100 text-slate-700 border-slate-200" }
+  }, [verification?.verificationStatus])
 
   if (isLoading) {
     return (
@@ -278,6 +387,11 @@ export default function ProfilePage() {
                           Verified User
                         </Badge>
                       )}
+                      {isLandlord && (
+                        <Badge className={verificationStatusMeta.color}>
+                          Landlord: {verificationStatusMeta.label}
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-foreground leading-relaxed">{profile.bio || "Tell others about yourself."}</p>
                   </div>
@@ -289,10 +403,11 @@ export default function ProfilePage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3 mb-8">
+          <TabsList className={`grid w-full ${tabColumns} mb-8`}>
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="favorites">Favorites</TabsTrigger>
             <TabsTrigger value="reviews">My Reviews</TabsTrigger>
+            {isLandlord && <TabsTrigger value="verification">Verification</TabsTrigger>}
           </TabsList>
 
           {/* Profile Tab */}
@@ -594,6 +709,121 @@ export default function ProfilePage() {
             </Card>
             </motion.div>
           </TabsContent>
+
+          {isLandlord && (
+            <TabsContent value="verification">
+              <motion.div initial="hidden" animate="show" variants={fadeUp}>
+                <Card className="rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-white/20">
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-3">
+                      <CardTitle>Landlord Verification</CardTitle>
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${verificationStatusMeta.color}`}>
+                        {verificationStatusMeta.label}
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground text-sm mt-2">
+                      Submit your citizenship details to unlock full landlord capabilities.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {verificationLoading ? (
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <Spinner size={18} /> Loading verification status...
+                      </div>
+                    ) : (
+                      <>
+                        {verification?.verificationStatus === "REJECTED" && (
+                          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                            <div className="font-semibold mb-1">Rejected</div>
+                            <div>{verification.verificationNotes || "Please resubmit with correct documents."}</div>
+                          </div>
+                        )}
+                        {verification?.verificationStatus === "PENDING" && (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                            Your documents are under review. We’ll notify you once they’re approved.
+                          </div>
+                        )}
+                        {verification?.verificationStatus === "APPROVED" && (
+                          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                            You’re verified! You can continue creating and managing listings.
+                          </div>
+                        )}
+
+                        {(verification?.verificationStatus !== "PENDING" &&
+                          verification?.verificationStatus !== "APPROVED") && (
+                          <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Citizenship Number</Label>
+                                <Input
+                                  value={verificationForm.citizenshipNumber}
+                                  onChange={(e) => handleVerificationInput("citizenshipNumber", e.target.value)}
+                                  placeholder="Citizenship number"
+                                  className={glassInputClasses}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Citizenship Front Image</Label>
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleDocumentUpload("citizenshipFrontImage", e.target.files?.[0])}
+                                  className={glassInputClasses}
+                                />
+                                {verificationUploading.front && (
+                                  <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                    <Spinner size={14} /> Uploading front...
+                                  </div>
+                                )}
+                                {verificationForm.citizenshipFrontImage && (
+                                  <p className="text-xs text-muted-foreground break-all">
+                                    Uploaded: {verificationForm.citizenshipFrontImage}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Citizenship Back Image</Label>
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleDocumentUpload("citizenshipBackImage", e.target.files?.[0])}
+                                  className={glassInputClasses}
+                                />
+                                {verificationUploading.back && (
+                                  <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                    <Spinner size={14} /> Uploading back...
+                                  </div>
+                                )}
+                                {verificationForm.citizenshipBackImage && (
+                                  <p className="text-xs text-muted-foreground break-all">
+                                    Uploaded: {verificationForm.citizenshipBackImage}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex justify-end">
+                              <Button
+                                onClick={handleVerificationSubmit}
+                                disabled={
+                                  verificationSubmitting ||
+                                  !verificationForm.citizenshipNumber ||
+                                  !verificationForm.citizenshipFrontImage ||
+                                  !verificationForm.citizenshipBackImage
+                                }
+                              >
+                                {verificationSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Submit for review
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>

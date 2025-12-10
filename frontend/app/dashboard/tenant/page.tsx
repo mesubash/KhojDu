@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/context/AuthContext"
 import { UserRole } from "@/types/auth"
 import { getDashboardRouteForRole } from "@/lib/utils"
-import { Calendar, CheckCircle, Clock, Home, MapPin, MessageSquare, Search, Star } from "lucide-react"
+import { AlertTriangle, Calendar, CheckCircle, Clock, Flag, Home, MapPin, MessageSquare, Search, Star } from "lucide-react"
 import Link from "next/link"
 import { fetchTenantInquiries, fetchWishlist, InquiryItem, WishlistItem } from "@/services/dashboardService"
 import { searchProperties, fetchProperty } from "@/services/propertyService"
@@ -18,11 +18,13 @@ import { toast } from "sonner"
 import { fetchTenantDashboard } from "@/services/tenantService"
 import { Spinner } from "@/components/ui/spinner"
 import { motion } from "framer-motion"
+import { fetchMyComplaints } from "@/services/complaintService"
+import type { Complaint } from "@/types/complaint"
 
 export default function TenantDashboard() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading } = useAuth()
-  const [activeTab, setActiveTab] = useState<"overview" | "saved" | "visits">("overview")
+  const [activeTab, setActiveTab] = useState<"overview" | "saved" | "visits" | "complaints">("overview")
   const [wishlist, setWishlist] = useState<WishlistItem[]>([])
   const [inquiries, setInquiries] = useState<InquiryItem[]>([])
   const [recommended, setRecommended] = useState<PropertyListItem[]>([])
@@ -31,11 +33,17 @@ export default function TenantDashboard() {
   const [isFetching, setIsFetching] = useState(false)
   const [wishlistLoadingMore, setWishlistLoadingMore] = useState(false)
   const [inquiryLoadingMore, setInquiryLoadingMore] = useState(false)
+  const [complaintsLoading, setComplaintsLoading] = useState(false)
+  const [complaintsLoadingMore, setComplaintsLoadingMore] = useState(false)
   const [wishlistPage, setWishlistPage] = useState(0)
   const [inquiryPage, setInquiryPage] = useState(0)
+  const [complaintsPage, setComplaintsPage] = useState(0)
   const [wishlistHasMore, setWishlistHasMore] = useState(true)
   const [inquiryHasMore, setInquiryHasMore] = useState(true)
+  const [complaintsHasMore, setComplaintsHasMore] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [complaintsError, setComplaintsError] = useState<string | null>(null)
+  const [complaints, setComplaints] = useState<Complaint[]>([])
   const pageSize = 5
   const listContainer = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } } }
   const fadeItem = {
@@ -114,6 +122,34 @@ export default function TenantDashboard() {
     [pageSize],
   )
 
+  const loadComplaints = useCallback(
+    async (page = 0, append = false) => {
+      if (append) {
+        setComplaintsLoadingMore(true)
+      } else {
+        setComplaintsLoading(true)
+      }
+      try {
+        const resp = await fetchMyComplaints({ page, size: pageSize })
+        setComplaints((prev) => (append ? [...prev, ...(resp?.content || [])] : resp?.content || []))
+        setComplaintsPage(page)
+        const totalPages =
+          resp?.totalPages ?? (resp?.totalElements != null ? Math.ceil(resp.totalElements / pageSize) : undefined)
+        const last = totalPages ? page + 1 >= totalPages : (resp?.content?.length || 0) < pageSize
+        setComplaintsHasMore(!last)
+        setComplaintsError(null)
+      } catch (err) {
+        console.error("[TenantDashboard] Failed to load complaints", err)
+        setComplaintsError("Could not load your complaints.")
+        setComplaintsHasMore(false)
+      } finally {
+        setComplaintsLoading(false)
+        setComplaintsLoadingMore(false)
+      }
+    },
+    [pageSize],
+  )
+
   useEffect(() => {
     if (isLoading) return
 
@@ -154,6 +190,13 @@ export default function TenantDashboard() {
       })
       .finally(() => setIsFetching(false))
   }, [isAuthenticated, loadInquiries, loadWishlist, user])
+
+  useEffect(() => {
+    if (!isAuthenticated || !user || user.role !== UserRole.TENANT) return
+    if (activeTab === "complaints" && complaints.length === 0 && !complaintsLoading) {
+      loadComplaints(0, false)
+    }
+  }, [activeTab, complaints.length, complaintsLoading, isAuthenticated, loadComplaints, user])
 
   if (isLoading) {
     return (
@@ -207,6 +250,7 @@ export default function TenantDashboard() {
             { id: "overview", label: "Overview" },
             { id: "saved", label: "Saved Homes" },
             { id: "visits", label: "Visits & Applications" },
+            { id: "complaints", label: "Complaints" },
           ].map((tab) => (
             <Button
               key={tab.id}
@@ -602,6 +646,122 @@ export default function TenantDashboard() {
               {inquiryLoadingMore ? <Spinner size={16} /> : "Load more"}
             </Button>
           </div>
+        )}
+
+        {activeTab === "complaints" && (
+          <motion.div variants={listContainer} initial="hidden" animate="show" className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Track issues you have reported.</p>
+                {complaintsError && <p className="text-sm text-red-600">{complaintsError}</p>}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" asChild>
+                  <Link href="/search">
+                    <Search className="h-4 w-4 mr-2" /> Find a listing to report
+                  </Link>
+                </Button>
+                <Button asChild className="bg-orange-500 hover:bg-orange-600 text-white">
+                  <Link href="/search">Browse listings</Link>
+                </Button>
+              </div>
+            </div>
+
+            <Card className="rounded-xl bg-white/80 dark:bg-gray-900/60 backdrop-blur border border-orange-100/60 dark:border-gray-800/80 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-500" /> Your complaints
+                </CardTitle>
+                <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                  {complaints.length} filed
+                </Badge>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {complaintsLoading && (
+                  <div className="flex items-center justify-center py-4">
+                    <Spinner />
+                  </div>
+                )}
+                {!complaintsLoading && complaints.length === 0 && (
+                  <p className="text-sm text-muted-foreground px-2">You have not filed any complaints yet.</p>
+                )}
+                {(complaintsLoading ? [] : complaints).map((complaint) => {
+                  const createdAt = complaint.createdAt
+                    ? new Date(complaint.createdAt).toLocaleString()
+                    : "Recently"
+                  const status = complaint.status || "PENDING"
+                  const statusClasses =
+                    status === "RESOLVED"
+                      ? "bg-green-100 text-green-800"
+                      : status === "INVESTIGATING"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : status === "DISMISSED"
+                      ? "bg-gray-100 text-gray-800"
+                      : "bg-orange-100 text-orange-800"
+
+                  return (
+                    <motion.div
+                      key={complaint.id}
+                      variants={fadeItem}
+                      whileHover={{ y: -2, scale: 1.002 }}
+                      className="border border-border rounded-lg p-4 bg-white/70 dark:bg-gray-900/40 backdrop-blur"
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold text-foreground">{complaint.subject}</p>
+                            <Badge variant="secondary" className="text-[11px]">
+                              {complaint.complaintType.replace(/_/g, " ")}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+                            {complaint.description}
+                          </p>
+                          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                            <span>Filed: {createdAt}</span>
+                            {complaint.propertyId && (
+                              <Link
+                                href={`/listing/${complaint.propertyId}`}
+                                className="inline-flex items-center gap-1 text-orange-600 hover:text-orange-700"
+                              >
+                                <Home className="h-3.5 w-3.5" /> View listing
+                              </Link>
+                            )}
+                            {complaint.landlordName && <span>Landlord: {complaint.landlordName}</span>}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-start md:items-end gap-2 min-w-[140px]">
+                          <Badge variant="secondary" className={statusClasses}>
+                            {status}
+                          </Badge>
+                          {complaint.priority && (
+                            <Badge variant="outline" className="text-[11px]">
+                              Priority: {complaint.priority}
+                            </Badge>
+                          )}
+                          <Button asChild variant="ghost" size="sm" className="text-orange-600 hover:text-orange-700">
+                            <Link href="/search">File another</Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )
+                })}
+                {complaintsHasMore && !complaintsLoading && (
+                  <div className="flex justify-center pt-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => loadComplaints(complaintsPage + 1, true)}
+                      disabled={complaintsLoadingMore}
+                      className="min-w-[150px]"
+                    >
+                      {complaintsLoadingMore ? <Spinner size={16} /> : "Load more"}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
       </div>
     </div>

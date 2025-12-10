@@ -66,6 +66,8 @@ public class AdminServiceImpl implements AdminService {
         stats.put("activeProperties", propertyRepository.findByIsAvailable(true, Pageable.unpaged()).getTotalElements());
         stats.put("pendingApproval", propertyRepository.findByStatus(PropertyStatus.PENDING, Pageable.unpaged()).getTotalElements());
         stats.put("featuredProperties", propertyRepository.findByIsFeatured(true, Pageable.unpaged()).getTotalElements());
+        stats.put("pendingVerifications", landlordVerificationRepository.countByVerificationStatus(VerificationStatus.PENDING));
+        stats.put("pendingVerifications", landlordVerificationRepository.countByVerificationStatus(VerificationStatus.PENDING));
 
         // Review statistics
         stats.put("totalReviews", reviewRepository.count());
@@ -208,13 +210,33 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
+    @Transactional
+    public void deleteProperty(UUID propertyId) {
+        log.info("Deleting property: {}", propertyId);
+        Property property = propertyRepository.findById(propertyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
+        try {
+            propertyRepository.delete(property);
+            log.info("Property deleted successfully: {}", propertyId);
+        } catch (DataIntegrityViolationException ex) {
+            log.warn("Property delete blocked due to existing references: {}", propertyId, ex);
+            throw new ConflictException("Cannot delete this property because there are related records linked to it.");
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PagedResponse<?> getPendingVerifications(int page, int size) {
         Pageable pageable = PaginationUtil.createPageable(page, size, "submittedAt", "DESC");
         Page<LandlordVerification> verificationPage = landlordVerificationRepository
                 .findByVerificationStatus(VerificationStatus.PENDING, pageable);
 
-        return PaginationUtil.createPagedResponse(verificationPage);
+        var mapped = verificationPage.getContent()
+                .stream()
+                .map(userMapper::toLandlordVerificationResponse)
+                .toList();
+
+        return PaginationUtil.createPagedResponse(verificationPage, mapped);
     }
 
     @Override

@@ -14,6 +14,8 @@ import java.util.UUID;
 public class LandlordVerificationResponse {
     private UUID id;
     private UUID userId;
+    private String userFullName;
+    private String userEmail;
     private String citizenshipNumber;
     private String citizenshipFrontImage;
     private String citizenshipBackImage;

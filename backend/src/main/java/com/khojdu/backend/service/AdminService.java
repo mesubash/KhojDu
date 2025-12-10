@@ -17,6 +17,7 @@ public interface AdminService {
     void activateUser(UUID userId);
     void updateUserRole(UUID userId, UserRole role);
     void deleteUser(UUID userId);
+    void deleteProperty(UUID propertyId);
     PagedResponse<?> getPendingVerifications(int page, int size);
     void approveVerification(UUID verificationId);
     void rejectVerification(UUID verificationId, String reason);

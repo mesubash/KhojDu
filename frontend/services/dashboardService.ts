@@ -63,6 +63,28 @@ export async function fetchPendingVerifications(page = 0, size = 10) {
   return data.data
 }
 
+export async function approveVerification(verificationId: string) {
+  const { data } = await axiosInstance.put<ApiResponse<any>>(`/admin/verifications/${verificationId}/approve`)
+  invalidate(`admin-verifications-0-10`)
+  return data.data
+}
+
+export async function rejectVerification(verificationId: string, reason = "Rejected by admin") {
+  const { data } = await axiosInstance.put<ApiResponse<any>>(
+    `/admin/verifications/${verificationId}/reject?reason=${encodeURIComponent(reason)}`
+  )
+  invalidate(`admin-verifications-0-10`)
+  return data.data
+}
+
+export async function fetchAdminComplaints(params: { page?: number; size?: number; status?: string } = {}) {
+  const { page = 0, size = 10, status } = params
+  const query = new URLSearchParams({ page: String(page), size: String(size) })
+  if (status) query.set("status", status)
+  const { data } = await axiosInstance.get<ApiResponse<any>>(`/complaints/admin/all?${query.toString()}`)
+  return data.data
+}
+
 export async function fetchAdminProperties(params: { page?: number; size?: number; search?: string; status?: string } = {}) {
   const { page = 0, size = 20, search, status } = params
   const query = new URLSearchParams({
@@ -73,6 +95,30 @@ export async function fetchAdminProperties(params: { page?: number; size?: numbe
   if (status) query.set("status", status)
 
   const { data } = await axiosInstance.get<ApiResponse<PagedResponse<PropertyListItem>>>(`/admin/properties?${query.toString()}`)
+  return data.data
+}
+
+export async function deleteAdminProperty(propertyId: string) {
+  const { data } = await axiosInstance.delete<ApiResponse<any>>(`/admin/properties/${propertyId}`)
+  return data.data
+}
+
+export async function approveAdminProperty(propertyId: string) {
+  const { data } = await axiosInstance.put<ApiResponse<any>>(`/admin/properties/${propertyId}/approve`)
+  return data.data
+}
+
+export async function rejectAdminProperty(propertyId: string, reason = "Rejected by admin") {
+  const { data } = await axiosInstance.put<ApiResponse<any>>(
+    `/admin/properties/${propertyId}/reject?reason=${encodeURIComponent(reason)}`
+  )
+  return data.data
+}
+
+export async function featureAdminProperty(propertyId: string, featured: boolean) {
+  const { data } = await axiosInstance.put<ApiResponse<any>>(
+    `/admin/properties/${propertyId}/feature?featured=${featured}`
+  )
   return data.data
 }
 

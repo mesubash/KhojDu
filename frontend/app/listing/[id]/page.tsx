@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import {
@@ -41,6 +43,8 @@ import type { ReviewSummary, Review } from "@/types/review"
 import { Spinner } from "@/components/ui/spinner"
 import { useAuth } from "@/context/AuthContext"
 import { addToWishlist, removeFromWishlist, checkWishlist } from "@/services/wishlistService"
+import { createComplaint } from "@/services/complaintService"
+import type { ComplaintType } from "@/types/complaint"
 import { motion } from "framer-motion"
 
 export default function ListingDetailPage() {
@@ -68,6 +72,19 @@ export default function ListingDetailPage() {
     rating: 0,
     review: "",
     stayDuration: "",
+  })
+  const [showComplaintModal, setShowComplaintModal] = useState(false)
+  const [submittingComplaint, setSubmittingComplaint] = useState(false)
+  const [complaintForm, setComplaintForm] = useState<{
+    complaintType: ComplaintType
+    subject: string
+    description: string
+    evidenceUrls: string
+  }>({
+    complaintType: "FAKE_LISTING",
+    subject: "",
+    description: "",
+    evidenceUrls: "",
   })
   const [helpfulReviews, setHelpfulReviews] = useState<number[]>([])
   const [reviews, setReviews] = useState<Review[]>([])
@@ -178,6 +195,70 @@ export default function ListingDetailPage() {
     const msg = `Hello! I'd like to book a visit for "${property?.title}". Please share available slots this week.`
     openWhatsApp(msg)
   }, [openWhatsApp, property?.title])
+
+  const complaintTypeOptions: { value: ComplaintType; label: string }[] = [
+    { value: "FAKE_LISTING", label: "Fake listing or misleading info" },
+    { value: "FRAUD", label: "Fraud or payment issue" },
+    { value: "OVERCHARGING", label: "Overcharging or hidden fees" },
+    { value: "PROPERTY_MISMATCH", label: "Property mismatch" },
+    { value: "POOR_MAINTENANCE", label: "Poor maintenance" },
+    { value: "HARASSMENT", label: "Harassment or safety concern" },
+    { value: "OTHER", label: "Other" },
+  ]
+
+  const handleOpenComplaint = useCallback(() => {
+    if (!isAuthenticated) {
+      toast.error("Please log in to submit a complaint.")
+      router.push(`/auth/login?redirect=/listing/${propertyId}`)
+      return
+    }
+    setShowComplaintModal(true)
+  }, [isAuthenticated, propertyId, router])
+
+  const handleSubmitComplaint = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!propertyId) {
+        toast.error("Missing property information.")
+        return
+      }
+
+      const payload = {
+        propertyId: propertyId as string,
+        landlordId: landlord?.id,
+        complaintType: complaintForm.complaintType,
+        subject: complaintForm.subject.trim(),
+        description: complaintForm.description.trim(),
+        evidenceUrls: complaintForm.evidenceUrls
+          ? complaintForm.evidenceUrls.split(",").map((url) => url.trim()).filter(Boolean)
+          : undefined,
+      }
+
+      if (!payload.subject || !payload.description) {
+        toast.error("Subject and description are required.")
+        return
+      }
+
+      try {
+        setSubmittingComplaint(true)
+        await createComplaint(payload)
+        toast.success("Complaint submitted. Our team will review it shortly.")
+        setShowComplaintModal(false)
+        setComplaintForm({
+          complaintType: "FAKE_LISTING",
+          subject: "",
+          description: "",
+          evidenceUrls: "",
+        })
+      } catch (err) {
+        console.error("[Complaint] Failed to submit", err)
+        toast.error("Could not submit complaint. Please try again.")
+      } finally {
+        setSubmittingComplaint(false)
+      }
+    },
+    [complaintForm, landlord?.id, propertyId],
+  )
 
   const handleSubmitReview = useCallback(
     async (e: React.FormEvent) => {
@@ -772,6 +853,15 @@ export default function ListingDetailPage() {
                   >
                     Book a visit (WhatsApp)
                   </Button>
+
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-lg h-11 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/40 dark:text-red-300 dark:hover:bg-red-900/20"
+                    onClick={handleOpenComplaint}
+                  >
+                    <Flag className="h-4 w-4 mr-2" />
+                    Report a problem
+                  </Button>
                 </div>
 
                 <div className="text-xs text-muted-foreground text-center pt-3 border-t border-border">
@@ -837,6 +927,100 @@ export default function ListingDetailPage() {
                   </Button>
                   <Button type="button" variant="outline" onClick={() => setShowContactModal(false)}>
                     Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Complaint Modal */}
+      {showComplaintModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md supports-[backdrop-filter]:bg-black/30">
+          <Card className="w-full max-w-xl rounded-xl bg-card shadow-2xl">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0">
+              <div>
+                <CardTitle>Report a problem</CardTitle>
+                <p className="text-muted-foreground">
+                  Tell us what went wrong with this listing or landlord.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowComplaintModal(false)}
+                className="p-2 rounded-full bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+                aria-label="Close complaint modal"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmitComplaint} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Issue type</label>
+                    <Select
+                      value={complaintForm.complaintType}
+                      onValueChange={(value) =>
+                        setComplaintForm((prev) => ({ ...prev, complaintType: value as ComplaintType }))
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {complaintTypeOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Subject</label>
+                    <Input
+                      value={complaintForm.subject}
+                      onChange={(e) => setComplaintForm((prev) => ({ ...prev, subject: e.target.value }))}
+                      placeholder="e.g., Listing photos do not match the property"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Description</label>
+                  <Textarea
+                    rows={5}
+                    value={complaintForm.description}
+                    onChange={(e) => setComplaintForm((prev) => ({ ...prev, description: e.target.value }))}
+                    placeholder="Share details about the issue, including dates or names if relevant."
+                    required
+                    className="resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Evidence links (optional)</label>
+                  <Input
+                    value={complaintForm.evidenceUrls}
+                    onChange={(e) => setComplaintForm((prev) => ({ ...prev, evidenceUrls: e.target.value }))}
+                    placeholder="Paste links separated by commas (images, screenshots, documents)"
+                  />
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                  <Button type="button" variant="outline" onClick={() => setShowComplaintModal(false)} disabled={submittingComplaint}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white" disabled={submittingComplaint}>
+                    {submittingComplaint ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Submitting...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Flag className="h-4 w-4" /> Submit complaint
+                      </span>
+                    )}
                   </Button>
                 </div>
               </form>

@@ -2,11 +2,17 @@ package com.khojdu.backend.service.impl;
 
 import com.khojdu.backend.dto.user.UserProfileRequest;
 import com.khojdu.backend.dto.user.UserProfileResponse;
+import com.khojdu.backend.dto.user.LandlordVerificationRequest;
+import com.khojdu.backend.dto.user.LandlordVerificationResponse;
+import com.khojdu.backend.entity.LandlordVerification;
 import com.khojdu.backend.entity.User;
 import com.khojdu.backend.entity.UserProfile;
+import com.khojdu.backend.entity.enums.UserRole;
+import com.khojdu.backend.entity.enums.VerificationStatus;
 import com.khojdu.backend.exception.BadRequestException;
 import com.khojdu.backend.exception.ResourceNotFoundException;
 import com.khojdu.backend.mapper.UserMapper;
+import com.khojdu.backend.repository.LandlordVerificationRepository;
 import com.khojdu.backend.repository.UserProfileRepository;
 import com.khojdu.backend.repository.UserRepository;
 import com.khojdu.backend.service.UserService;
@@ -16,6 +22,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -23,6 +31,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private final LandlordVerificationRepository landlordVerificationRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
 
@@ -86,6 +95,47 @@ public class UserServiceImpl implements UserService {
 
         userRepository.delete(user);
         log.info("Account deleted successfully for user: {}", identifier);
+    }
+
+    @Override
+    @Transactional
+    public LandlordVerificationResponse submitLandlordVerification(String identifier, LandlordVerificationRequest request) {
+        log.info("Submitting landlord verification for user: {}", identifier);
+
+        User user = resolveUser(identifier);
+        if (user.getRole() != UserRole.LANDLORD) {
+            throw new BadRequestException("Only landlords can submit verification");
+        }
+
+        LandlordVerification verification = landlordVerificationRepository.findByUser(user).orElse(new LandlordVerification());
+
+        // Allow updating documents while pending; block only if already approved
+        if (verification.getVerificationStatus() == VerificationStatus.APPROVED) {
+            throw new BadRequestException("You are already verified as a landlord");
+        }
+
+        verification.setUser(user);
+        verification.setCitizenshipNumber(request.getCitizenshipNumber());
+        verification.setCitizenshipFrontImage(request.getCitizenshipFrontImage());
+        verification.setCitizenshipBackImage(request.getCitizenshipBackImage());
+        verification.setVerificationStatus(VerificationStatus.PENDING);
+        verification.setVerificationNotes(null);
+        verification.setSubmittedAt(LocalDateTime.now());
+        verification.setVerifiedAt(null);
+
+        verification = landlordVerificationRepository.save(verification);
+        user.setLandlordVerification(verification);
+        userRepository.save(user);
+
+        return userMapper.toLandlordVerificationResponse(verification);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LandlordVerificationResponse getLandlordVerification(String identifier) {
+        User user = resolveUser(identifier);
+        LandlordVerification verification = landlordVerificationRepository.findByUser(user).orElse(null);
+        return userMapper.toLandlordVerificationResponse(verification);
     }
 
     private User resolveUser(String identifier) {
