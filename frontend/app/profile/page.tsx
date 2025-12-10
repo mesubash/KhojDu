@@ -94,6 +94,10 @@ export default function ProfilePage() {
   const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.22 } } }
   const stagger = { show: { transition: { staggerChildren: 0.05, delayChildren: 0.04 } } }
   const cardHover = { whileHover: { y: -4, scale: 1.01, transition: { duration: 0.16 } } }
+  const role = profile.role
+  const isTenant = role === UserRole.TENANT
+  const isLandlord = role === UserRole.LANDLORD
+  const isAdmin = role === UserRole.ADMIN
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -105,6 +109,19 @@ export default function ProfilePage() {
     budgetMax: "",
     preferredPropertyType: "" as PropertyType | "",
   })
+
+  const tabs = useMemo(() => {
+    const base = [{ id: "profile", label: "Profile" }]
+    if (isTenant) {
+      base.push({ id: "favorites", label: "Favorites" })
+      base.push({ id: "reviews", label: "Reviews" })
+    }
+    if (isLandlord) {
+      base.push({ id: "reviews", label: "Reviews" })
+      base.push({ id: "verification", label: "Verification" })
+    }
+    return base
+  }, [isLandlord, isTenant])
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -155,6 +172,13 @@ export default function ProfilePage() {
 
     loadProfile()
   }, [authUser?.email, authUser?.fullName, isAuthenticated, router])
+
+  useEffect(() => {
+    const ids = tabs.map((t) => t.id)
+    if (!ids.includes(activeTab)) {
+      setActiveTab(ids[0] || "profile")
+    }
+  }, [activeTab, tabs])
 
   // Load wishlist when favorites tab is viewed
   useEffect(() => {
@@ -233,16 +257,19 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      await updateProfile({
+      const payload: any = {
         fullName: formData.name,
         phone: formData.phone || undefined,
         occupation: formData.occupation || undefined,
         bio: formData.bio || undefined,
-        preferredLocation: formData.location || undefined,
-        budgetMin: formData.budgetMin ? Number(formData.budgetMin) : undefined,
-        budgetMax: formData.budgetMax ? Number(formData.budgetMax) : undefined,
-        preferredPropertyType: formData.preferredPropertyType || undefined,
-      })
+      }
+      if (isTenant) {
+        payload.preferredLocation = formData.location || undefined
+        payload.budgetMin = formData.budgetMin ? Number(formData.budgetMin) : undefined
+        payload.budgetMax = formData.budgetMax ? Number(formData.budgetMax) : undefined
+        payload.preferredPropertyType = formData.preferredPropertyType || undefined
+      }
+      await updateProfile(payload)
       toast.success("Profile updated successfully.")
       setIsEditing(false)
     } catch (err: any) {
@@ -308,8 +335,7 @@ export default function ProfilePage() {
     return date.toLocaleDateString(undefined, { year: "numeric", month: "long" })
   }, [profile.createdAt])
 
-  const isLandlord = profile.role === UserRole.LANDLORD
-  const tabColumns = isLandlord ? "grid-cols-4" : "grid-cols-3"
+  const tabCount = tabs.length || 1
 
   const verificationStatusMeta = useMemo(() => {
     const status = verification?.verificationStatus
@@ -403,11 +429,15 @@ export default function ProfilePage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className={`grid w-full ${tabColumns} mb-8`}>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="favorites">Favorites</TabsTrigger>
-            <TabsTrigger value="reviews">My Reviews</TabsTrigger>
-            {isLandlord && <TabsTrigger value="verification">Verification</TabsTrigger>}
+          <TabsList
+            className="grid w-full mb-8"
+            style={{ gridTemplateColumns: `repeat(${tabCount}, minmax(0, 1fr))` }}
+          >
+            {tabs.map((tab) => (
+              <TabsTrigger key={tab.id} value={tab.id}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           {/* Profile Tab */}
@@ -474,69 +504,73 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="location" className="text-sm font-medium">
-                      Preferred Location
-                    </Label>
-                    <Input
-                      id="location"
-                      value={formData.location}
-                      onChange={(e) => handleInputChange("location", e.target.value)}
-                      disabled={!isEditing}
-                      className={`mt-1 ${glassInputClasses}`}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="preferredPropertyType" className="text-sm font-medium">
-                      Preferred Property Type
-                    </Label>
-                    <Select
-                      value={formData.preferredPropertyType}
-                      onValueChange={(value) => handleInputChange("preferredPropertyType", value as PropertyType)}
-                      disabled={!isEditing}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ROOM">Room</SelectItem>
-                        <SelectItem value="FLAT">Flat</SelectItem>
-                        <SelectItem value="HOUSE">House</SelectItem>
-                        <SelectItem value="APARTMENT">Apartment</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                {isTenant && (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div>
+                        <Label htmlFor="location" className="text-sm font-medium">
+                          Preferred Location
+                        </Label>
+                        <Input
+                          id="location"
+                          value={formData.location}
+                          onChange={(e) => handleInputChange("location", e.target.value)}
+                          disabled={!isEditing}
+                          className={`mt-1 ${glassInputClasses}`}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="preferredPropertyType" className="text-sm font-medium">
+                          Preferred Property Type
+                        </Label>
+                        <Select
+                          value={formData.preferredPropertyType}
+                          onValueChange={(value) => handleInputChange("preferredPropertyType", value as PropertyType)}
+                          disabled={!isEditing}
+                        >
+                          <SelectTrigger className="mt-1">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ROOM">Room</SelectItem>
+                            <SelectItem value="FLAT">Flat</SelectItem>
+                            <SelectItem value="HOUSE">House</SelectItem>
+                            <SelectItem value="APARTMENT">Apartment</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="budgetMin" className="text-sm font-medium">
-                      Minimum Budget (Rs)
-                    </Label>
-                    <Input
-                      id="budgetMin"
-                      type="number"
-                      value={formData.budgetMin}
-                    onChange={(e) => handleInputChange("budgetMin", e.target.value)}
-                    disabled={!isEditing}
-                    className={`mt-1 ${glassInputClasses}`}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="budgetMax" className="text-sm font-medium">
-                    Maximum Budget (Rs)
-                    </Label>
-                    <Input
-                      id="budgetMax"
-                      type="number"
-                      value={formData.budgetMax}
-                    onChange={(e) => handleInputChange("budgetMax", e.target.value)}
-                    disabled={!isEditing}
-                    className={`mt-1 ${glassInputClasses}`}
-                  />
-                </div>
-              </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div>
+                        <Label htmlFor="budgetMin" className="text-sm font-medium">
+                          Minimum Budget (Rs)
+                        </Label>
+                        <Input
+                          id="budgetMin"
+                          type="number"
+                          value={formData.budgetMin}
+                          onChange={(e) => handleInputChange("budgetMin", e.target.value)}
+                          disabled={!isEditing}
+                          className={`mt-1 ${glassInputClasses}`}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="budgetMax" className="text-sm font-medium">
+                          Maximum Budget (Rs)
+                        </Label>
+                        <Input
+                          id="budgetMax"
+                          type="number"
+                          value={formData.budgetMax}
+                          onChange={(e) => handleInputChange("budgetMax", e.target.value)}
+                          disabled={!isEditing}
+                          className={`mt-1 ${glassInputClasses}`}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
 
               <div>
                 <Label htmlFor="bio" className="text-sm font-medium">
@@ -573,6 +607,7 @@ export default function ProfilePage() {
           </TabsContent>
 
           {/* Favorites Tab */}
+          {isTenant && (
           <TabsContent value="favorites">
             <motion.div initial="hidden" animate="show" variants={fadeUp}>
             <Card className="rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-white/20">
@@ -635,8 +670,10 @@ export default function ProfilePage() {
             </Card>
             </motion.div>
           </TabsContent>
+          )}
 
           {/* Reviews Tab */}
+          {(isTenant || isLandlord) && (
           <TabsContent value="reviews">
             <motion.div initial="hidden" animate="show" variants={fadeUp}>
             <Card className="rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-white/20">
@@ -709,6 +746,7 @@ export default function ProfilePage() {
             </Card>
             </motion.div>
           </TabsContent>
+          )}
 
           {isLandlord && (
             <TabsContent value="verification">
