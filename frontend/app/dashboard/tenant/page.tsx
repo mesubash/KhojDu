@@ -20,11 +20,13 @@ import { Spinner } from "@/components/ui/spinner"
 import { motion } from "framer-motion"
 import { fetchMyComplaints } from "@/services/complaintService"
 import type { Complaint } from "@/types/complaint"
+import { fetchSearchPreferences, createSearchPreference, deleteSearchPreference } from "@/services/searchPreferenceService"
+import type { SearchPreference } from "@/types/searchPreference"
 
 export default function TenantDashboard() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading } = useAuth()
-  const [activeTab, setActiveTab] = useState<"overview" | "saved" | "visits" | "complaints">("overview")
+  const [activeTab, setActiveTab] = useState<"overview" | "saved" | "visits" | "complaints" | "searches">("overview")
   const [wishlist, setWishlist] = useState<WishlistItem[]>([])
   const [inquiries, setInquiries] = useState<InquiryItem[]>([])
   const [recommended, setRecommended] = useState<PropertyListItem[]>([])
@@ -44,6 +46,20 @@ export default function TenantDashboard() {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [complaintsError, setComplaintsError] = useState<string | null>(null)
   const [complaints, setComplaints] = useState<Complaint[]>([])
+  const [searchPrefs, setSearchPrefs] = useState<SearchPreference[]>([])
+  const [searchPrefsLoading, setSearchPrefsLoading] = useState(false)
+  const [savingPref, setSavingPref] = useState(false)
+  const [prefForm, setPrefForm] = useState({
+    name: "",
+    city: "",
+    propertyType: "",
+    minPrice: "",
+    maxPrice: "",
+    minBedrooms: "",
+    maxBedrooms: "",
+    notifyNewMatches: true,
+    notifyPriceDrops: true,
+  })
   const pageSize = 5
   const listContainer = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.05 } } }
   const fadeItem = {
@@ -97,6 +113,19 @@ export default function TenantDashboard() {
     },
     [pageSize],
   )
+
+  const loadSearchPrefs = useCallback(async () => {
+    setSearchPrefsLoading(true)
+    try {
+      const prefs = await fetchSearchPreferences()
+      setSearchPrefs(prefs || [])
+    } catch (err) {
+      console.error("[TenantDashboard] Failed to load saved searches", err)
+      toast.error("Could not load saved searches.")
+    } finally {
+      setSearchPrefsLoading(false)
+    }
+  }, [])
 
   const loadInquiries = useCallback(
     async (page = 0, append = false) => {
@@ -172,6 +201,7 @@ export default function TenantDashboard() {
       searchProperties({ page: 0, size: 6, sortBy: "createdAt", sortDirection: "DESC" }),
       loadWishlist(0, false),
       loadInquiries(0, false),
+      loadSearchPrefs(),
     ])
       .then(([dashboardResp, recommendedResp]) => {
         setWishlistCount((prev) => dashboardResp?.wishlistCount ?? prev)
@@ -189,14 +219,17 @@ export default function TenantDashboard() {
         toast.error("Failed to load some dashboard data.")
       })
       .finally(() => setIsFetching(false))
-  }, [isAuthenticated, loadInquiries, loadWishlist, user])
+  }, [isAuthenticated, loadInquiries, loadSearchPrefs, loadWishlist, user])
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== UserRole.TENANT) return
     if (activeTab === "complaints" && complaints.length === 0 && !complaintsLoading) {
       loadComplaints(0, false)
     }
-  }, [activeTab, complaints.length, complaintsLoading, isAuthenticated, loadComplaints, user])
+    if (activeTab === "searches" && searchPrefs.length === 0 && !searchPrefsLoading) {
+      loadSearchPrefs()
+    }
+  }, [activeTab, complaints.length, complaintsLoading, isAuthenticated, loadComplaints, loadSearchPrefs, searchPrefs.length, searchPrefsLoading, user])
 
   if (isLoading) {
     return (
@@ -251,6 +284,7 @@ export default function TenantDashboard() {
             { id: "saved", label: "Saved Homes" },
             { id: "visits", label: "Visits & Applications" },
             { id: "complaints", label: "Complaints" },
+            { id: "searches", label: "Saved Searches" },
           ].map((tab) => (
             <Button
               key={tab.id}
@@ -470,6 +504,222 @@ export default function TenantDashboard() {
           </div>
         )}
 
+        {activeTab === "searches" && (
+          <motion.div variants={listContainer} initial="hidden" animate="show" className="space-y-4">
+            <Card className="rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-white/20">
+              <CardHeader>
+                <CardTitle className="text-lg">Saved searches</CardTitle>
+                <p className="text-muted-foreground text-sm">Reuse your favorite filters and get notified of new matches.</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Name</Label>
+                    <Input
+                      placeholder="e.g., Kathmandu flats under 25k"
+                      value={prefForm.name}
+                      onChange={(e) => setPrefForm((p) => ({ ...p, name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">City</Label>
+                    <Input
+                      placeholder="Kathmandu"
+                      value={prefForm.city}
+                      onChange={(e) => setPrefForm((p) => ({ ...p, city: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Property type</Label>
+                    <Select
+                      value={prefForm.propertyType}
+                      onValueChange={(value) => setPrefForm((p) => ({ ...p, propertyType: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Any" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Any</SelectItem>
+                        <SelectItem value="ROOM">Room</SelectItem>
+                        <SelectItem value="FLAT">Flat</SelectItem>
+                        <SelectItem value="HOUSE">House</SelectItem>
+                        <SelectItem value="APARTMENT">Apartment</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Min price</Label>
+                      <Input
+                        type="number"
+                        value={prefForm.minPrice}
+                        onChange={(e) => setPrefForm((p) => ({ ...p, minPrice: e.target.value }))}
+                        placeholder="10000"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Max price</Label>
+                      <Input
+                        type="number"
+                        value={prefForm.maxPrice}
+                        onChange={(e) => setPrefForm((p) => ({ ...p, maxPrice: e.target.value }))}
+                        placeholder="25000"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Min beds</Label>
+                      <Input
+                        type="number"
+                        value={prefForm.minBedrooms}
+                        onChange={(e) => setPrefForm((p) => ({ ...p, minBedrooms: e.target.value }))}
+                        placeholder="1"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Max beds</Label>
+                      <Input
+                        type="number"
+                        value={prefForm.maxBedrooms}
+                        onChange={(e) => setPrefForm((p) => ({ ...p, maxBedrooms: e.target.value }))}
+                        placeholder="3"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={prefForm.notifyNewMatches}
+                      onChange={(e) => setPrefForm((p) => ({ ...p, notifyNewMatches: e.target.checked }))}
+                    />
+                    <Label className="text-sm text-muted-foreground">Notify me about new matches</Label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={prefForm.notifyPriceDrops}
+                      onChange={(e) => setPrefForm((p) => ({ ...p, notifyPriceDrops: e.target.checked }))}
+                    />
+                    <Label className="text-sm text-muted-foreground">Notify me about price drops</Label>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    onClick={async () => {
+                      if (!prefForm.name.trim()) {
+                        toast.error("Name is required")
+                        return
+                      }
+                      setSavingPref(true)
+                      try {
+                        await createSearchPreference({
+                          name: prefForm.name.trim(),
+                          city: prefForm.city || undefined,
+                          propertyType: prefForm.propertyType || undefined,
+                          minPrice: prefForm.minPrice ? Number(prefForm.minPrice) : undefined,
+                          maxPrice: prefForm.maxPrice ? Number(prefForm.maxPrice) : undefined,
+                          minBedrooms: prefForm.minBedrooms ? Number(prefForm.minBedrooms) : undefined,
+                          maxBedrooms: prefForm.maxBedrooms ? Number(prefForm.maxBedrooms) : undefined,
+                          notifyNewMatches: prefForm.notifyNewMatches,
+                          notifyPriceDrops: prefForm.notifyPriceDrops,
+                        })
+                        toast.success("Saved search added")
+                        setPrefForm({
+                          name: "",
+                          city: "",
+                          propertyType: "",
+                          minPrice: "",
+                          maxPrice: "",
+                          minBedrooms: "",
+                          maxBedrooms: "",
+                          notifyNewMatches: true,
+                          notifyPriceDrops: true,
+                        })
+                        loadSearchPrefs()
+                      } catch (err) {
+                        console.error("[TenantDashboard] Failed to save search pref", err)
+                        toast.error("Could not save search.")
+                      } finally {
+                        setSavingPref(false)
+                      }
+                    }}
+                    disabled={savingPref}
+                  >
+                    {savingPref ? "Saving..." : "Save search"}
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {searchPrefsLoading && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Spinner size={16} /> Loading saved searches...
+                    </div>
+                  )}
+                  {!searchPrefsLoading && searchPrefs.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No saved searches yet.</p>
+                  )}
+                  {!searchPrefsLoading &&
+                    searchPrefs.map((pref) => (
+                      <motion.div
+                        key={pref.id}
+                        variants={fadeItem}
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-border rounded-lg p-4 bg-white/70 dark:bg-gray-900/40 backdrop-blur"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-foreground">{pref.name}</p>
+                            {pref.propertyType && (
+                              <Badge variant="secondary" className="text-xs">
+                                {pref.propertyType}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                            {pref.city && <span>City: {pref.city}</span>}
+                            {pref.minPrice && <span>Min: Rs {pref.minPrice.toLocaleString()}</span>}
+                            {pref.maxPrice && <span>Max: Rs {pref.maxPrice.toLocaleString()}</span>}
+                            {pref.minBedrooms && <span>Min beds: {pref.minBedrooms}</span>}
+                            {pref.maxBedrooms && <span>Max beds: {pref.maxBedrooms}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            asChild
+                          >
+                            <Link
+                              href={`/search?city=${encodeURIComponent(pref.city || "")}&propertyType=${pref.propertyType || ""}&minRent=${pref.minPrice || ""}&maxRent=${pref.maxPrice || ""}`}
+                            >
+                              View matches
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={async () => {
+                              try {
+                                await deleteSearchPreference(pref.id)
+                                setSearchPrefs((prev) => prev.filter((p) => p.id !== pref.id))
+                                toast.success("Deleted saved search")
+                              } catch (err) {
+                                console.error("[TenantDashboard] Failed to delete search pref", err)
+                                toast.error("Could not delete saved search.")
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </motion.div>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
         {activeTab === "saved" && (
           <motion.div variants={listContainer} initial="hidden" animate="show" className="space-y-4">
             {(isFetching ? [] : wishlist).map((home) => (

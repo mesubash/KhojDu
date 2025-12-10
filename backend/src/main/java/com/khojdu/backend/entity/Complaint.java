@@ -49,7 +49,7 @@ public class Complaint {
     @Column(nullable = false)
     private String description;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "complaint_evidence", joinColumns = @JoinColumn(name = "complaint_id"))
     @Column(name = "evidence_url")
     private List<String> evidenceUrls;

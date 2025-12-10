@@ -36,27 +36,43 @@ public class ComplaintServiceImpl implements ComplaintService {
     private final UserRepository userRepository;
     private final PropertyRepository propertyRepository;
     private final ComplaintMapper complaintMapper;
+    private User resolveUser(String identifier) {
+        try {
+            return userRepository.findById(UUID.fromString(identifier))
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        } catch (IllegalArgumentException ex) {
+            return userRepository.findByEmail(identifier)
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        }
+    }
 
     @Override
     @Transactional
     public ComplaintResponse createComplaint(String userEmail, ComplaintRequest request) {
         log.info("Creating complaint by user: {}", userEmail);
 
-        User complainant = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User complainant = resolveUser(userEmail);
 
-        Complaint complaint = new Complaint();
+         Complaint complaint = new Complaint();
         complaint.setComplainant(complainant);
 
         if (request.getPropertyId() != null) {
-            Property property = propertyRepository.findById(request.getPropertyId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Property not found"));
-            complaint.setProperty(property);
-            complaint.setLandlord(property.getLandlord());
+            UUID propId = request.getPropertyId();
+            Property property = propertyRepository.findById(propId).orElse(null);
+            if (property != null) {
+                complaint.setProperty(property);
+                complaint.setLandlord(property.getLandlord());
+            } else {
+                log.warn("Complaint filed for missing property {}", propId);
+            }
         } else if (request.getLandlordId() != null) {
-            User landlord = userRepository.findById(request.getLandlordId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Landlord not found"));
-            complaint.setLandlord(landlord);
+            UUID landlordId = request.getLandlordId();
+            User landlord = userRepository.findById(landlordId).orElse(null);
+            if (landlord != null) {
+                complaint.setLandlord(landlord);
+            } else {
+                log.warn("Complaint filed for missing landlord {}", landlordId);
+            }
         }
 
         complaint.setComplaintType(request.getComplaintType());
@@ -115,8 +131,7 @@ public class ComplaintServiceImpl implements ComplaintService {
         Complaint complaint = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new ResourceNotFoundException("Complaint not found"));
 
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = resolveUser(userEmail);
 
         // Check access
         if (!complaint.getComplainant().getId().equals(user.getId()) &&

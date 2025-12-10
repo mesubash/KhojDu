@@ -372,7 +372,7 @@ public class PropertyServiceImpl implements PropertyService {
 
     @Override
     @Transactional(readOnly = true)
-    public PagedResponse<PropertyListResponse> getLandlordProperties(String landlordId, int page, int size) {
+    public PagedResponse<PropertyListResponse> getLandlordProperties(String landlordId, int page, int size, PropertyStatus status) {
         Optional<User> maybeLandlord;
         try {
             maybeLandlord = userRepository.findById(UUID.fromString(landlordId));
@@ -388,7 +388,7 @@ public class PropertyServiceImpl implements PropertyService {
         User landlord = maybeLandlord.get();
 
         Pageable pageable = PaginationUtil.createPageable(page, size, "createdAt", "DESC");
-        Page<Property> propertyPage = propertyRepository.findByLandlord(landlord, pageable);
+        Page<Property> propertyPage = propertyRepository.findByLandlordAndStatus(landlord, status, pageable);
 
         List<PropertyListResponse> properties = propertyPage.getContent()
                 .stream()

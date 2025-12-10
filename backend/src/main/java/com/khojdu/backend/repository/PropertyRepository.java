@@ -18,7 +18,13 @@ import java.util.UUID;
 @Repository
 public interface PropertyRepository extends JpaRepository<Property, UUID> {
 
-    Page<Property> findByLandlord(User landlord, Pageable pageable);
+    @Query("""
+        SELECT p FROM Property p
+        WHERE p.landlord = :landlord
+          AND (:status IS NULL OR p.status = :status)
+        ORDER BY p.createdAt DESC
+        """)
+    Page<Property> findByLandlordAndStatus(User landlord, PropertyStatus status, Pageable pageable);
 
     Page<Property> findByPropertyType(PropertyType propertyType, Pageable pageable);
 

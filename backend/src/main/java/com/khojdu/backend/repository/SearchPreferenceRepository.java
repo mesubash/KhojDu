@@ -10,18 +10,5 @@ import java.util.UUID;
 
 @Repository
 public interface SearchPreferenceRepository extends JpaRepository<SearchPreference, UUID> {
-
     List<SearchPreference> findByUser(User user);
-
-    List<SearchPreference> findByUserId(UUID userId);
-
-    // Use explicit operator to avoid 'Matches' being interpreted as a keyword
-    List<SearchPreference> findByUserAndNotifyNewMatchesEquals(User user, boolean notifyNewMatches);
-
-    List<SearchPreference> findByUserAndNotifyPriceDropsEquals(User user, boolean notifyPriceDrops);
-
-    // Simpler forms for the common true-case
-    List<SearchPreference> findByUserAndNotifyNewMatchesTrue(User user);
-
-    List<SearchPreference> findByUserAndNotifyPriceDropsTrue(User user);
 }

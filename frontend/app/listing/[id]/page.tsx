@@ -314,14 +314,22 @@ export default function ListingDetailPage() {
           description: "",
           evidenceUrls: "",
         })
-      } catch (err) {
+      } catch (err: any) {
+        const status = err?.response?.status
+        if (status === 404) {
+          toast.error("This listing is unavailable to file a complaint.")
+        } else if (status === 401 || status === 403) {
+          toast.error("Please log in to file a complaint.")
+          router.push("/auth/login?redirect=/listing/" + propertyId)
+        } else {
+          toast.error("Could not submit complaint. Please try again.")
+        }
         console.error("[Complaint] Failed to submit", err)
-        toast.error("Could not submit complaint. Please try again.")
       } finally {
         setSubmittingComplaint(false)
       }
     },
-    [complaintForm, landlord?.id, propertyId],
+    [complaintForm, landlord?.id, propertyId, router],
   )
 
   const handleSubmitReview = useCallback(

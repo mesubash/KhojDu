@@ -2,6 +2,7 @@ package com.khojdu.backend.service;
 
 import com.khojdu.backend.dto.common.PagedResponse;
 import com.khojdu.backend.dto.property.*;
+import com.khojdu.backend.entity.enums.PropertyStatus;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -21,7 +22,7 @@ public interface PropertyService {
 
     PagedResponse<PropertyListResponse> searchProperties(PropertySearchRequest request);
 
-    PagedResponse<PropertyListResponse> getLandlordProperties(String landlordEmail, int page, int size);
+    PagedResponse<PropertyListResponse> getLandlordProperties(String landlordEmail, int page, int size, PropertyStatus status);
 
     PagedResponse<PropertyListResponse> getFeaturedProperties(int page, int size);
 

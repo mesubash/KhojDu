@@ -165,7 +165,13 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     if (!isAuthenticated) return
-    loadProperties(0, false, filterStatus === "all" ? undefined : filterStatus.toUpperCase())
+    const statusParam =
+      filterStatus === "all"
+        ? undefined
+        : filterStatus === "approved"
+        ? "APPROVED"
+        : filterStatus.toUpperCase()
+    loadProperties(0, false, statusParam)
   }, [isAuthenticated, filterStatus])
 
   // Show loading state while checking authentication (place after hooks to avoid hook order issues)
@@ -469,7 +475,16 @@ export default function LandlordDashboard() {
                               <p className="text-xs text-muted-foreground">{listing.location}</p>
                             </div>
                           </div>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${
+                              listing.status?.toUpperCase() === "PENDING"
+                                ? "border-amber-300 text-amber-700"
+                                : listing.status?.toUpperCase() === "REJECTED"
+                                ? "border-red-300 text-red-700"
+                                : ""
+                            }`}
+                          >
                             {listing.status || "Active"}
                           </Badge>
                         </div>
@@ -565,8 +580,9 @@ export default function LandlordDashboard() {
                       [listing.address, listing.city, listing.district].filter(Boolean).join(", ") ||
                       "Not specified"
                     const displayLocation = locationLabel.split(",").slice(0, 3).map((part) => part.trim()).filter(Boolean).join(", ")
-                    const isActive = listing.isAvailable ?? listing.status?.toLowerCase() === "active"
-                    const statusLabel = listing.status || (isActive ? "ACTIVE" : "UNKNOWN")
+                    const statusRaw = listing.status?.toUpperCase() || ""
+                    const isActive = listing.isAvailable ?? statusRaw === "ACTIVE" || statusRaw === "APPROVED"
+                    const statusLabel = statusRaw || (isActive ? "ACTIVE" : "UNKNOWN")
 
                     return (
                       <motion.div key={listing.id} variants={fadeUp} {...cardHover}>
@@ -594,12 +610,21 @@ export default function LandlordDashboard() {
                                     <div className="flex flex-wrap items-center gap-2">
                                       <Badge
                                         variant={isActive ? "default" : "secondary"}
-                                        className={`w-fit text-xs ${isActive ? "bg-green-100 text-green-800" : ""}`}
+                                        className={`w-fit text-xs ${isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-700"}`}
                                       >
                                         {isActive ? "Active" : "Inactive"}
                                       </Badge>
-                                      <Badge variant="outline" className="text-xs">
-                                        Status: {statusLabel}
+                                      <Badge
+                                        variant="outline"
+                                        className={`text-xs ${
+                                          statusRaw === "PENDING"
+                                            ? "border-amber-300 text-amber-700"
+                                            : statusRaw === "REJECTED"
+                                            ? "border-red-300 text-red-700"
+                                            : ""
+                                        }`}
+                                      >
+                                        Status: {statusLabel || "UNKNOWN"}
                                       </Badge>
                                     </div>
                                   </div>
@@ -668,6 +693,20 @@ export default function LandlordDashboard() {
                                 <Button asChild variant="secondary" size="sm" className="rounded-lg">
                                   <Link href={`/listing/${listing.id}`}>View details</Link>
                                 </Button>
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs ${
+                                    statusRaw === "PENDING"
+                                      ? "border-amber-300 text-amber-700"
+                                      : statusRaw === "REJECTED"
+                                      ? "border-red-300 text-red-700"
+                                      : statusRaw === "APPROVED"
+                                      ? "border-green-300 text-green-700"
+                                      : ""
+                                  }`}
+                                >
+                                  {statusLabel || "UNKNOWN"}
+                                </Badge>
                                 <Button
                                   type="button"
                                   size="sm"

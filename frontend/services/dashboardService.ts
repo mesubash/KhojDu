@@ -2,6 +2,7 @@ import axiosInstance from "@/lib/axios"
 import type { ApiResponse } from "@/types/auth"
 import { getCached, setCached, invalidate } from "@/lib/requestCache"
 import type { PropertyListItem } from "@/types/property"
+import type { Complaint } from "@/types/complaint"
 
 // Shared pagination structure matching backend ApiResponse<PagedResponse<T>>
 interface PagedResponse<T> {
@@ -81,7 +82,7 @@ export async function fetchAdminComplaints(params: { page?: number; size?: numbe
   const { page = 0, size = 10, status } = params
   const query = new URLSearchParams({ page: String(page), size: String(size) })
   if (status) query.set("status", status)
-  const { data } = await axiosInstance.get<ApiResponse<any>>(`/complaints/admin/all?${query.toString()}`)
+  const { data } = await axiosInstance.get<ApiResponse<PagedResponse<Complaint>>>(`/complaints/admin/all?${query.toString()}`)
   return data.data
 }
 
@@ -167,7 +168,7 @@ export interface LandlordProperty {
 
 export async function fetchLandlordProperties(params: { page?: number; size?: number; status?: string } = {}) {
   const { page = 0, size = 10, status } = params
-  const cacheKey = `landlord-props-${page}-${size}`
+  const cacheKey = `landlord-props-${page}-${size}-${status || "all"}`
   const cached = getCached<PagedResponse<LandlordProperty>>(cacheKey)
   if (cached) return cached
   const query = new URLSearchParams({ page: String(page), size: String(size) })

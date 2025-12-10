@@ -5,6 +5,7 @@ import com.khojdu.backend.dto.common.PagedResponse;
 import com.khojdu.backend.dto.common.SuccessResponse;
 import com.khojdu.backend.dto.property.*;
 import com.khojdu.backend.service.PropertyService;
+import com.khojdu.backend.entity.enums.PropertyStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -108,15 +109,18 @@ public class PropertyController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    // Search preferences endpoints could be added here if needed
+
     @GetMapping("/landlord/my-properties")
     @PreAuthorize("hasRole('LANDLORD') or hasRole('ADMIN')")
     @Operation(summary = "Get landlord properties", description = "Get properties owned by the landlord")
     public ResponseEntity<ApiResponse<PagedResponse<PropertyListResponse>>> getMyProperties(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) PropertyStatus status,
             Principal principal) {
         PagedResponse<PropertyListResponse> response = propertyService.getLandlordProperties(
-                principal.getName(), page, size);
+                principal.getName(), page, size, status);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
