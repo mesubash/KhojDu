@@ -475,11 +475,23 @@ export default function AdminDashboard() {
   }
 
   const statCards = [
-    { title: "Total Users", value: stats?.totalUsers ?? "--", icon: Users, color: "text-orange-600" },
-    { title: "Active Listings", value: stats?.totalProperties ?? "--", icon: Building, color: "text-green-600" },
-    { title: "Featured", value: stats?.featuredProperties ?? "--", icon: TrendingUp, color: "text-teal-600" },
-    { title: "Pending Verifications", value: stats?.pendingVerifications ?? "--", icon: ShieldCheck, color: "text-indigo-600" },
-    { title: "Complaints", value: stats?.pendingComplaints ?? "--", icon: AlertTriangle, color: "text-red-600" },
+    { title: "Total Users", value: stats?.totalUsers ?? "--", icon: Users, color: "text-orange-600", target: "users" },
+    {
+      title: "Active Listings",
+      value: stats?.totalProperties ?? "--",
+      icon: Building,
+      color: "text-green-600",
+      target: "listings",
+    },
+    { title: "Featured", value: stats?.featuredProperties ?? "--", icon: TrendingUp, color: "text-teal-600", target: "listings" },
+    {
+      title: "Pending Verifications",
+      value: stats?.pendingVerifications ?? "--",
+      icon: ShieldCheck,
+      color: "text-indigo-600",
+      target: "verifications",
+    },
+    { title: "Complaints", value: stats?.pendingComplaints ?? "--", icon: AlertTriangle, color: "text-red-600", target: "complaints" },
   ];
 
   return (
@@ -544,9 +556,10 @@ export default function AdminDashboard() {
                       return (
                         <motion.div key={index} {...cardHover} variants={rowVariants} custom={index}>
                           <Card
-                            className="rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-border/60 cursor-pointer"
+                            className="rounded-xl shadow-sm bg-white/80 dark:bg-gray-900/70 backdrop-blur-xl border border-border/60 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-xl hover:border-orange-200/70 hover:bg-white/90 hover:backdrop-blur-2xl dark:hover:bg-gray-900/80"
                             onClick={() => {
-                              if (isVerifications) setActiveTab("verifications")
+                              if (stat.target) setActiveTab(stat.target)
+                              else if (isVerifications) setActiveTab("verifications")
                             }}
                           >
                             <CardContent className="p-6 space-y-2">
