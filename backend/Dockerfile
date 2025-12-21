@@ -1,4 +1,4 @@
-FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
+FROM eclipse-temurin:21-jre AS builder
 WORKDIR /app
 
 # Pre-fetch dependencies to speed up subsequent builds
