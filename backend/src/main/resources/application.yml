@@ -4,6 +4,7 @@
 
 server:
   port: ${SERVER_PORT:8089}
+  address: 0.0.0.0
   servlet:
     context-path: /api
     encoding:
@@ -23,7 +24,7 @@ server:
 spring:
   application:
     name: khojdu-backend
-  
+
   # ==========================================
   # DATABASE CONFIGURATION
   # ==========================================
@@ -37,7 +38,7 @@ spring:
       max-lifetime: 1200000
       connection-test-query: SELECT 1
       pool-name: KhojDuHikariPool
-  
+
   # ==========================================
   # JPA/HIBERNATE CONFIGURATION
   # ==========================================
@@ -67,7 +68,7 @@ spring:
           use_query_cache: false
     open-in-view: false
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-  
+
   # ==========================================
   # FLYWAY CONFIGURATION
   # ==========================================
@@ -82,7 +83,7 @@ spring:
     table: flyway_schema_history
     baseline-version: 0
     clean-disabled: true
-  
+
   # ==========================================
   # REDIS CONFIGURATION
   # ==========================================
@@ -115,7 +116,7 @@ spring:
   cache:
     type: redis
     redis:
-      time-to-live: 3600000  # 1 hour in milliseconds
+      time-to-live: 3600000 # 1 hour in milliseconds
       cache-null-values: false
       key-prefix: "khojdu:"
       use-key-prefix: true
@@ -124,7 +125,7 @@ spring:
       - users
       - amenities
       - reviews
-  
+
   # ==========================================
   # MAIL CONFIGURATION
   # ==========================================
@@ -148,7 +149,7 @@ spring:
           timeout: 3000
           writetimeout: 5000
     default-encoding: UTF-8
-  
+
   # ==========================================
   # SERVLET/MULTIPART CONFIGURATION
   # ==========================================
@@ -159,7 +160,7 @@ spring:
       max-request-size: ${MAX_REQUEST_SIZE:50MB}
       file-size-threshold: 2KB
       location: ${java.io.tmpdir}
-  
+
   # ==========================================
   # THYMELEAF CONFIGURATION (Email Templates)
   # ==========================================
@@ -170,7 +171,7 @@ spring:
     encoding: UTF-8
     cache: false
     check-template-location: true
-  
+
   # ==========================================
   # JACKSON/JSON CONFIGURATION
   # ==========================================
@@ -186,7 +187,7 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     mapper:
       accept-case-insensitive-enums: true
-  
+
   # ==========================================
   # ASYNC CONFIGURATION
   # ==========================================
@@ -209,18 +210,17 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET:khojdu-super-secret-key-for-jwt-token-generation-2024}
-    expiration: ${JWT_EXPIRATION:86400000}        # 24 hours
-    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}  # 7 days
+    expiration: ${JWT_EXPIRATION:86400000} # 24 hours
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
     refresh-token-cookie-name: ${JWT_REFRESH_TOKEN_COOKIE_NAME:refreshToken}
     refresh-token-expiration-days: ${JWT_REFRESH_TOKEN_EXPIRATION_DAYS:7}
     header: Authorization
     prefix: Bearer
     issuer: KhojDu
   cookie:
-    secure: ${COOKIE_SECURE:false}  # Set to true in production (HTTPS only)
-    domain: ${COOKIE_DOMAIN:}  # Set your domain in production (e.g., .khojdu.com)
+    secure: ${COOKIE_SECURE:false} # Set to true in production (HTTPS only)
+    domain: ${COOKIE_DOMAIN:} # Set your domain in production (e.g., .khojdu.com)
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
-
 
 # ==========================================
 # FILE STORAGE CONFIGURATION
@@ -258,7 +258,7 @@ pagination:
 # ==========================================
 search:
   max-results: ${SEARCH_MAX_RESULTS:1000}
-  default-radius: ${SEARCH_DEFAULT_RADIUS_KM:5}  # km
+  default-radius: ${SEARCH_DEFAULT_RADIUS_KM:5} # km
   enable-fuzzy-search: true
   fuzzy-threshold: 0.7
 
@@ -269,7 +269,7 @@ business:
   property:
     max-images: ${MAX_PROPERTY_IMAGES:10}
     image-formats: jpg,jpeg,png,webp
-    max-image-size: 10485760  # 10MB in bytes
+    max-image-size: 10485760 # 10MB in bytes
     featured-price: ${FEATURED_PROPERTY_PRICE_NPR:500}
   review:
     moderation-enabled: ${REVIEW_MODERATION_ENABLED:true}
@@ -291,10 +291,10 @@ security:
     require-special-char: ${PASSWORD_REQUIRE_SPECIAL_CHAR:false}
   account:
     max-login-attempts: ${MAX_LOGIN_ATTEMPTS:5}
-    lockout-duration: ${LOCKOUT_DURATION:300}  # seconds
+    lockout-duration: ${LOCKOUT_DURATION:300} # seconds
   token:
-    verification-expiry: 86400000  # 24 hours
-    password-reset-expiry: 3600000  # 1 hour
+    verification-expiry: 86400000 # 24 hours
+    password-reset-expiry: 3600000 # 1 hour
 
 # ==========================================
 # CORS CONFIGURATION
@@ -421,7 +421,6 @@ springdoc:
 # ==========================================
 timezone:
   default: Asia/Kathmandu
-
 ## ==========================================
 ## APPLICATION INFO
 ## ==========================================
