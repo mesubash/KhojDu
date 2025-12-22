@@ -1,29 +1,17 @@
-FROM eclipse-temurin:21-jre AS builder
+FROM maven:3.9.9-eclipse-temurin-21 AS builder
 WORKDIR /app
 
-# Pre-fetch dependencies to speed up subsequent builds
-COPY pom.xml mvnw ./
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH=$JAVA_HOME/bin:$PATH
+
+COPY pom.xml ./
 COPY .mvn .mvn
-RUN --mount=type=cache,target=/root/.m2 \
-    ./mvnw -B -DskipTests dependency:go-offline
 
-COPY src ./src
-RUN --mount=type=cache,target=/root/.m2 \
-    ./mvnw -B -DskipTests package
+RUN mvn -version
+RUN java -version
+RUN javac -version
 
-FROM eclipse-temurin:21-jre-alpine
-WORKDIR /app
-RUN addgroup --system spring && adduser --system --ingroup spring spring \
-    && mkdir -p /app/logs /app/uploads \
-    && chown -R spring:spring /app
+RUN mvn -B -DskipTests dependency:go-offline
 
-COPY --from=builder /app/target/*.jar /app/app.jar
-
-EXPOSE 8089
-ENV SPRING_PROFILES_ACTIVE=prod \
-    JAVA_TOOL_OPTIONS="-XX:+UseContainerSupport -XX:InitialRAMPercentage=40.0 -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom"
-
-USER spring
-HEALTHCHECK --interval=30s --timeout=5s --retries=5 CMD wget -qO- http://localhost:8089/actuator/health >/dev/null 2>&1 || exit 1
-
-ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar /app/app.jar"]
+COPY src src
+RUN mvn -B -DskipTests package
